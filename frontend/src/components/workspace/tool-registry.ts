@@ -201,16 +201,20 @@ export const toolRegistry: ToolDefinition[] = [
     label,
     description:
       id === "waterBalance"
-        ? "Color service areas by tank water balance."
+        ? "Color service areas by linked tank water supply in liters per person per day."
         : id === "isochrone"
-          ? "Select an operational tap and map the areas within walking-time contours."
-        : `${label} analysis is not available yet.`,
+          ? "Identify alternatives and pedestrian coverage for an affected service area."
+          : id === "accessibility"
+            ? "Generate walking-time isochrones from any mapped location or feature."
+            : `${label} analysis is not available yet.`,
     tab: "analysis",
     group,
     icon,
     size,
-    ...(id === "waterBalance" || id === "isochrone"
-      ? { paneRegion: "bottomRight" as const }
+    ...(id === "waterBalance"
+      ? { paneRegion: "left" as const }
+      : id === "isochrone" || id === "accessibility"
+        ? { paneRegion: "right" as const }
       : { comingSoon: true }),
   })),
 

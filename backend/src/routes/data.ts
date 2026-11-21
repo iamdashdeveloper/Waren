@@ -223,7 +223,9 @@ export async function dataRoutes(app: FastifyInstance) {
   }))
 
   app.get("/api/data/spatial-layers", async () => ({
-    layers: await listSpatialLayers(),
+    layers: (await listSpatialLayers()).filter(
+      (layer) => !/compound/i.test(layer.table),
+    ),
   }))
 
   app.get("/api/data/camps", async () => ({

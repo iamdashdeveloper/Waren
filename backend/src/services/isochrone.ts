@@ -52,10 +52,19 @@ type IsochroneFeature = {
   properties: Record<string, unknown> & { contourSeconds: number }
 }
 
+export type IsochroneOrigin = {
+  id: string
+  coordinates: [number, number]
+  block: string | null
+  operationalStatus: string | null
+  source: "tap" | "tank" | "borehole" | "map"
+  label: string | null
+}
+
 export type EmergencyWaterIsochrone = {
   type: "FeatureCollection"
   features: IsochroneFeature[]
-  waterPoint: WaterPointMetadata
+  waterPoint: IsochroneOrigin
   profile: "foot-walking"
   contours: number[]
 }
@@ -414,25 +423,11 @@ function cacheFeatures(key: string, features: IsochroneFeature[]) {
 }
 
 export async function createEmergencyWaterIsochrone(
-  waterPointId: string,
+  origin: IsochroneOrigin,
   contours: number[],
-  confirmUnverifiedStatus = false,
 ): Promise<EmergencyWaterIsochrone> {
-  const { metadata, coordinates } = await findWaterPoint(waterPointId)
-  if (isKnownNonOperational(metadata.operationalStatus)) {
-    throw new IsochroneError(
-      `Water point ${metadata.id} is marked "${metadata.operationalStatus}" and cannot be used as an operational source.`,
-      409,
-    )
-  }
-  if (!isKnownOperational(metadata.operationalStatus) && !confirmUnverifiedStatus) {
-    throw new IsochroneError(
-      "The tap's dataset status does not confirm that it is operational. Verify it and explicitly confirm before analysis.",
-      409,
-    )
-  }
-
-  const cacheKey = `${metadata.id}:${contours.join(",")}`
+  const coordinates = origin.coordinates
+  const cacheKey = `${origin.coordinates.map((value) => value.toFixed(6)).join(",")}:${contours.join(",")}`
   let features = cachedFeatures(cacheKey)
   if (!features) {
     if (!env.openRouteServiceApiKey) {
@@ -507,7 +502,7 @@ export async function createEmergencyWaterIsochrone(
   return {
     type: "FeatureCollection",
     features,
-    waterPoint: metadata,
+    waterPoint: origin,
     profile: "foot-walking",
     contours,
   }

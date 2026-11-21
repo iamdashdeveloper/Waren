@@ -207,7 +207,7 @@ function GuidedTour() {
         popover: {
           title: "Visualize water balance 💦",
           description:
-            "Open Water Balance to color service areas by supply status. Green means excess, yellow balanced, and red deficient.",
+            "Open Water Balance to color service areas using the `water_supply` value in L/P/D: 20 or more is green, 17 to under 20 is yellow, and below 17 is red. Hover a service area to inspect its population, supply, demand, and excess or deficit against the 20 L/person/day target.",
           side: "bottom" as const,
           onNextClick: (_element, _step, { driver: activeDriver }) => {
             if (!document.querySelector('[aria-label="Water Balance pane"]')) {
@@ -223,7 +223,7 @@ function GuidedTour() {
         popover: {
           title: "Compare supply and need ✅",
           description:
-            "The map colors and legend help you spot areas with excess, balanced, or deficient water supply. That’s your WAREN tour—happy exploring!",
+            "The map and legend use linked tank supply values; areas with several linked tanks take the lowest recorded value, without adding per-capita figures. Leave this pane open while opening Emergency Water Accessibility on the other side of the map.",
           side: "left" as const,
         },
       },
@@ -232,7 +232,7 @@ function GuidedTour() {
         popover: {
           title: "Plan for water-point outages 🚰",
           description:
-            "Find Emergency Water Accessibility Analysis in the Analysis tab. It maps walking-time areas around a working tap so you can explore alternatives when a nearby tap is dry.",
+            "Open Emergency Water Accessibility Analysis from the Analysis tab. Its area-planning workflow can use any mapped polygon with a service_code, including neighborhood areas and blocks.",
           side: "bottom" as const,
           onNextClick: (_element, _step, { driver: activeDriver }) => {
             setActiveTab("analysis")
@@ -258,65 +258,120 @@ function GuidedTour() {
         element: '[aria-label="Emergency Water Accessibility Analysis pane"]',
         waitForElement: 2000,
         popover: {
-          title: "Choose an existing tap 📍",
+          title: "Choose the affected service area 🗺️",
           description:
-            "Click a tap marker on the map. The selected tap’s dataset ID, block, and recorded status appear here. If status is not recorded, verify the tap is working before relying on the result.",
+            "Click any polygon on the map that has a service_code. WAREN uses that code and the selected layer to identify the service unit; it does not assume every unit is a block.",
           side: "left" as const,
         },
       },
       {
         element: '[data-tour="map-canvas"]',
         popover: {
-          title: "Select the water point",
+          title: "Select a polygon by its service code",
           description:
-            "Click an existing tap marker to use its real WAREN record and coordinates. Once it appears in the panel, choose Next.",
+            "Click a polygon. Its service_code identifies the area, and the analysis finds taps spatially contained by it. Boundary taps are called out because they may touch a neighboring unit too.",
           side: "top" as const,
           onNextClick: advanceWhen(
             () =>
               Boolean(
                 document
-                  .querySelector('[data-tour="selected-water-point"]')
-                  ?.textContent?.includes("ID:"),
+                  .querySelector('[data-tour="emergency-area-selection"]')
+                  ?.textContent?.includes("Service code"),
               ),
-            "Select an existing tap marker on the map first, then choose Next.",
+            "Select a polygon with a service_code on the map first, then choose Next.",
           ),
         },
         allowPageInteraction: true,
         disableActiveInteraction: false,
       },
       {
-        element: '[data-tour="isochrone-contours"]',
+        element: '[data-tour="emergency-affected-taps"]',
         popover: {
-          title: "Set walking times ⏱️",
+          title: "Set the outage scenario 🚰",
           description:
-            "Choose one or more travel-time bands. The defaults are 5, 10, and 15 minutes; the API receives those thresholds in seconds.",
+            "Taps marked damaged in the dataset are preselected. Review the list and explicitly choose which taps are affected; WAREN never assumes an entire polygon is out of service.",
           side: "left" as const,
         },
       },
       {
-        element: '[data-tour="generate-isochrone"]',
+        element: '[data-tour="emergency-rank"]',
         popover: {
-          title: "Generate the walking area 🗺️",
+          title: "Compare alternative sources 🚶",
           description:
-            "Generate requests pedestrian-network polygons from OpenRouteService. Wait for a result or an error before choosing Next.",
+            "Select explicitly operational taps and, if you have verified them locally, tanks. The ORS pedestrian matrix ranks routes from each affected tap and keeps unreachable pairs as “No route.”",
           side: "top" as const,
           onNextClick: advanceWhen(
             () =>
               Boolean(
-                document.querySelector('[data-tour="isochrone-result"]'),
+                document.querySelector('[data-tour="emergency-rankings"]') ||
+                document.querySelector('[data-tour="emergency-error"]'),
               ),
-            "Generate the isochrone and wait for the result or error message before continuing.",
+            "Rank alternatives and wait for the results before continuing.",
           ),
         },
         allowPageInteraction: true,
         disableActiveInteraction: false,
       },
       {
-        element: '[data-tour="isochrone-legend"]',
+        element: '[data-tour="emergency-coverage-contours"]',
         popover: {
-          title: "Read the contours—and plan alternatives 🌱",
+          title: "Choose walking-time bands ⏱️",
           description:
-            "Each colored polygon is an estimated area reachable on foot within its time band, following mapped paths rather than a circle. During a shortage, compare candidate working taps to explore alternatives. Check local status: an isochrone does not prove a tap has water, capacity, or that every path is passable.",
+            "Choose one or more 5, 10, and 15 minute bands. Select up to five ranked alternatives to compare their combined pedestrian coverage inside the chosen service area.",
+          side: "left" as const,
+        },
+      },
+      {
+        element: '[data-tour="emergency-coverage-generate"]',
+        popover: {
+          title: "Visualize combined coverage 🌱",
+          description:
+            "Generate source isochrones and compare their union with the selected polygon. The uncovered overlay and area percentages are geometry-only—not estimates of population, demand, water availability, or capacity.",
+          side: "top" as const,
+          onNextClick: advanceWhen(
+            () =>
+              Boolean(
+                document.querySelector('[data-tour="emergency-coverage-results"]') ||
+                document.querySelector('[data-tour="emergency-error"]'),
+              ),
+            "Generate coverage and wait for the results before continuing.",
+          ),
+        },
+        allowPageInteraction: true,
+        disableActiveInteraction: false,
+      },
+      {
+        element: '[data-tour="accessibility-tool"]',
+        popover: {
+          title: "Explore walking access from a point 📍",
+          description:
+            "Point isochrones now live under Accessibility, separate from emergency area planning. Open Accessibility to analyze a tap, tank, borehole, other map feature, or any location.",
+          side: "left" as const,
+          onNextClick: (_element, _step, { driver: activeDriver }) => {
+            setActiveTab("analysis")
+            setActiveMapTool("explore")
+            if (
+              availableCategories.includes("taps") &&
+              !activeCategories.includes("taps")
+            ) {
+              toggleCategory("taps")
+            }
+            if (
+              !document.querySelector('[aria-label="Accessibility pane"]')
+            ) {
+              togglePane("accessibility")
+            }
+            activeDriver.moveNext()
+          },
+        },
+      },
+      {
+        element: '[aria-label="Accessibility pane"]',
+        waitForElement: 2000,
+        popover: {
+          title: "Choose walking-time bands ⏱️",
+          description:
+            "Select a location on the map, choose one or more 5, 10, and 15 minute thresholds, then generate the pedestrian-network isochrone. Clear & exit closes this point-accessibility tool.",
           side: "left" as const,
         },
       },

@@ -127,13 +127,9 @@ function WorkspaceProvider({ children }: { children: ReactNode }) {
   const togglePane = useCallback((toolId: ToolId) => {
     const region = getTool(toolId)?.paneRegion
     if (!region) return
-    if (
-      toolId === "tankServiceAreas" ||
-      toolId === "waterBalance" ||
-      toolId === "isochrone"
-    ) {
+    if (toolId === "tankServiceAreas") {
       setMapMode((current) =>
-        toolId === "isochrone" || current === toolId ? "normal" : toolId,
+        current === toolId ? "normal" : toolId,
       )
     }
     setPanes((current) => {
@@ -147,7 +143,7 @@ function WorkspaceProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const closePane = useCallback((toolId: ToolId) => {
-    if (toolId === "tankServiceAreas" || toolId === "waterBalance") {
+    if (toolId === "tankServiceAreas") {
       setMapMode("normal")
     }
     setPanes((current) => {

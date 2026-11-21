@@ -1,48 +1,69 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import {
-  getTankWaterBalances,
+  getTankWaterSupply,
   type TankWaterBalance,
 } from "@/lib/api"
 
 export type WaterBalanceStatus =
-  | "excess"
-  | "balanced"
-  | "deficient"
+  | "adequate"
+  | "warning"
+  | "danger"
   | "unknown"
 
 export type TankWaterBalanceIndex = {
   byTankId: Map<string, WaterBalanceStatus>
+  supplyByTankId: Map<string, number | null>
+  detailsByTankId: Map<string, TankWaterBalance>
 }
 
 export type WaterBalanceLoadStatus = "idle" | "loading" | "loaded" | "error"
 
 const statusPriority: Record<WaterBalanceStatus, number> = {
   unknown: 0,
-  excess: 1,
-  balanced: 2,
-  deficient: 3,
+  adequate: 1,
+  warning: 2,
+  danger: 3,
 }
 
-export function classifyWaterBalance(
-  balance: number | null,
-  demand: number | null = null,
+export function classifyWaterSupply(
+  waterSupply: number | null,
 ): WaterBalanceStatus {
-  if (balance === null || !Number.isFinite(balance)) return "unknown"
-  if (balance === 0 || (demand !== null && balance === demand)) {
-    return "balanced"
-  }
-  return balance < 0 ? "deficient" : "excess"
+  if (waterSupply === null || !Number.isFinite(waterSupply)) return "unknown"
+  if (waterSupply >= 20) return "adequate"
+  if (waterSupply >= 17) return "warning"
+  return "danger"
 }
 
 export function buildTankWaterBalanceIndex(
-  balances: TankWaterBalance[],
+  supplies: TankWaterBalance[],
 ): TankWaterBalanceIndex {
   const byTankId = new Map<string, WaterBalanceStatus>()
-  for (const balance of balances) {
-    const tankId = balance.tankId.trim()
+  const supplyByTankId = new Map<string, number | null>()
+  const detailsByTankId = new Map<string, TankWaterBalance>()
+  for (const supply of supplies) {
+    const tankId = supply.tankId.trim()
     if (!tankId) continue
-    const status = classifyWaterBalance(balance.balance, balance.demand)
+    const status = classifyWaterSupply(supply.waterSupply)
     const current = byTankId.get(tankId)
+    const currentSupply = supplyByTankId.get(tankId)
+    const currentDetails = detailsByTankId.get(tankId)
+    if (
+      !supplyByTankId.has(tankId) ||
+      (supply.waterSupply !== null &&
+        (currentSupply === null ||
+          currentSupply === undefined ||
+          supply.waterSupply < currentSupply))
+    ) {
+      supplyByTankId.set(tankId, supply.waterSupply)
+    }
+    if (
+      !currentDetails ||
+      (supply.waterSupply !== null &&
+        (currentDetails.waterSupply === null ||
+          supply.waterSupply < currentDetails.waterSupply))
+    ) {
+      detailsByTankId.set(tankId, supply)
+    }
     if (
       current === undefined ||
       statusPriority[status] > statusPriority[current]
@@ -50,12 +71,12 @@ export function buildTankWaterBalanceIndex(
       byTankId.set(tankId, status)
     }
   }
-  return { byTankId }
+  return { byTankId, supplyByTankId, detailsByTankId }
 }
 
 function useTankWaterBalances(active: boolean) {
   const [status, setStatus] = useState<WaterBalanceLoadStatus>("idle")
-  const [balances, setBalances] = useState<TankWaterBalance[]>([])
+  const [supplies, setSupplies] = useState<TankWaterBalance[]>([])
   const [error, setError] = useState<string | null>(null)
   const loadedRef = useRef(false)
 
@@ -64,20 +85,20 @@ function useTankWaterBalances(active: boolean) {
     const controller = new AbortController()
     setStatus("loading")
     setError(null)
-    void getTankWaterBalances(controller.signal)
+    void getTankWaterSupply(controller.signal)
       .then((rows) => {
         if (controller.signal.aborted) return
-        setBalances(rows)
+        setSupplies(rows)
         loadedRef.current = true
         setStatus("loaded")
       })
       .catch((cause: unknown) => {
         if (controller.signal.aborted) return
-        console.error("Unable to load tank water-balance values.", cause)
+        console.error("Unable to load tank water-supply values.", cause)
         setError(
           cause instanceof Error
             ? cause.message
-            : "Unable to load tank water-balance values.",
+            : "Unable to load tank water-supply values.",
         )
         setStatus("error")
       })
@@ -85,8 +106,8 @@ function useTankWaterBalances(active: boolean) {
   }, [active])
 
   const index = useMemo(
-    () => buildTankWaterBalanceIndex(balances),
-    [balances],
+    () => buildTankWaterBalanceIndex(supplies),
+    [supplies],
   )
   return { ...index, status, error }
 }

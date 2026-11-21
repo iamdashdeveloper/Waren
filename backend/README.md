@@ -26,10 +26,15 @@ In production, set `NODE_ENV=production` and `CORS_ORIGIN` to the exact HTTPS or
 - `GET /api/data/spatial-layers` — accessible PostGIS spatial columns with geometry type and SRID metadata
 - `GET /api/data/:table/geojson?schema=public&geometryColumn=geom` — a validated PostGIS GeoJSON FeatureCollection
 - `GET /api/data/:table?schema=public&limit=100&offset=0` — fetch a page of rows from an existing table
-- `POST /api/analysis/isochrone` — generate a walking isochrone for an existing tap record
+- `POST /api/analysis/isochrone` — generate a walking isochrone for a tap, tank, borehole, or map coordinate
 - `GET /api/analysis/water-points/metadata` — discover the tap identifier, block, and operational-status columns
+- `POST /api/analysis/emergency-area` — load taps inside a selected polygon and nearby alternative taps/tanks by its `service_code`
+- `POST /api/analysis/emergency-rankings` — rank explicitly selected affected taps against operational taps and manually confirmed tanks using the ORS walking-time matrix
+- `POST /api/analysis/emergency-coverage` — generate selected-source isochrones and calculate their geometric coverage and uncovered area within the polygon
 
-Isochrone requests use the OpenRouteService `foot-walking` profile. Configure `ORS_API_KEY` on the backend only; never expose it as a frontend `VITE_*` variable. The provider has not been verified against production study-area coordinates until a valid provider key and deploy are available.
+Emergency accessibility requests use the OpenRouteService `foot-walking` profile. Area selection accepts any accessible polygon layer with a `service_code` column and identifies a unit by schema, table, and service code. Tap matching is spatial (`ST_Covers`); recorded `damaged` taps are preselected as affected, but the user must explicitly confirm the scenario. Alternatives are limited to explicitly `operational` taps. Tank conditions are shown as recorded and a tank must be manually selected/confirmed because the dataset has no explicit tank availability field. Ranking uses pedestrian-network durations, preserving unreachable pairs as null. Coverage percentages describe geometric intersection with the selected polygon only; they do not estimate population, demand, water availability, or capacity.
+
+Configure an `ORS_API_KEY` with both Matrix and Isochrone services enabled on the backend only; never expose it as a frontend `VITE_*` variable. ORS live coverage for the study area and live Matrix/Isochrone responses have not been verified until a valid provider key is available and the provider is successfully exercised.
 
 Table identifiers are checked against PostgreSQL metadata before use. The row endpoint only supports retrieval and does not modify the database. Geometry columns are selected as stored; no schema or spatial processing is performed.
 
@@ -43,6 +48,6 @@ Configure these Render service variables:
 - `NODE_ENV=production`
 - `CORS_ORIGIN=https://<your-vercel-domain>` — exact deployed frontend origin, without `/api` or a trailing slash; or `*` to allow any origin for a public, unauthenticated API.
 - `DATABASE_SSL_MODE=verify-full` — use `require` only if TLS certificate verification cannot be used.
-- `ORS_API_KEY` — OpenRouteService key for the emergency walking isochrone endpoint.
+- `ORS_API_KEY` — OpenRouteService key with Matrix and Isochrone services enabled.
 
 Render supplies `PORT`; the server binds to `0.0.0.0` by default. Provision and populate the Neon PostGIS database before deploying the API. After deployment, verify `https://<your-render-domain>/api/health` and `/api/health/db`.

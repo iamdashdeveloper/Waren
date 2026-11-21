@@ -140,9 +140,7 @@ function campForSpatialTable(
     }
   }
 
-  const villageMatch = /^Village_(\d+)_(?:Compounds?|Neighborhoods?)$/i.exec(
-    layer.table,
-  )
+  const villageMatch = /^Village_(\d+)_Neighborhoods?$/i.exec(layer.table)
   if (villageMatch?.[1]) {
     return {
       id: `village-${villageMatch[1]}`,

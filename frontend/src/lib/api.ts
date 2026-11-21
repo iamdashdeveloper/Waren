@@ -62,14 +62,18 @@ export type TankServiceRelationship = {
 
 export type TankWaterBalance = {
   tankId: string
-  balance: number | null
-  demand: number | null
+  waterSupply: number | null
+  waterSupplyPopulation: number | null
+  waterDemand: number | null
 }
 
 export type EmergencyWaterPoint = {
   id: string
   block: string | null
   operationalStatus: string | null
+  coordinates?: [number, number]
+  source?: "tap" | "tank" | "borehole" | "map"
+  label?: string | null
 }
 
 export type EmergencyWaterIsochrone = {
@@ -91,6 +95,67 @@ export type EmergencyWaterPointSchema = {
   identifierColumn: string
   blockColumn: string | null
   operationalStatusColumn: string | null
+}
+
+export type EmergencyAreaReference = {
+  schema: string
+  table: string
+  serviceCode: string
+}
+
+export type EmergencyAreaPoint = {
+  id: string
+  source: "tap" | "tank"
+  status: string | null
+  coordinates: [number, number]
+  onBoundary: boolean
+}
+
+export type EmergencyAreaDetails = {
+  area: {
+    schema: string
+    table: string
+    label: string
+    serviceCode: string
+    geometry: unknown
+    areaSquareMeters: number
+  }
+  affectedTaps: EmergencyAreaPoint[]
+  alternativeTaps: EmergencyAreaPoint[]
+  alternativeTanks: EmergencyAreaPoint[]
+}
+
+export type EmergencyAlternativeRanking = {
+  id: string
+  source: "tap" | "tank"
+  status: string | null
+  condition: string | null
+  travelTimes: {
+    affectedTapId: string
+    durationSeconds: number | null
+  }[]
+  reachableAffectedTaps: number
+  allAffectedTapsReachable: boolean
+  longestReachableRouteSeconds: number | null
+}
+
+export type EmergencyCoverage = {
+  type: "FeatureCollection"
+  features: EmergencyWaterIsochrone["features"]
+  area: {
+    type: "Feature"
+    geometry: unknown
+    properties: { table: string; serviceCode: string }
+  }
+  coverage: {
+    contourSeconds: number
+    coverageGeometry: unknown
+    uncoveredGeometry: unknown
+    areaSquareMeters: number
+    coveredSquareMeters: number
+    uncoveredSquareMeters: number
+    coveredPercent: number
+  }[]
 }
 
 const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim().replace(/\/+$/, "")
@@ -128,7 +193,7 @@ async function request<T>(
 }
 
 export function generateEmergencyWaterIsochrone(
-  waterPointId: string,
+  origin: EmergencyWaterPoint,
   contours: number[],
   confirmUnverifiedStatus: boolean,
   signal?: AbortSignal,
@@ -140,7 +205,7 @@ export function generateEmergencyWaterIsochrone(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        waterPointId,
+        origin,
         contours,
         profile: "foot-walking",
         confirmUnverifiedStatus,
@@ -153,6 +218,67 @@ export function getEmergencyWaterPointSchema(signal?: AbortSignal) {
   return request<EmergencyWaterPointSchema>(
     "/analysis/water-points/metadata",
     signal,
+  )
+}
+
+export function getEmergencyAreaDetails(
+  reference: EmergencyAreaReference,
+  signal?: AbortSignal,
+) {
+  return request<EmergencyAreaDetails>(
+    "/analysis/emergency-area",
+    signal,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(reference),
+    },
+  )
+}
+
+export function rankEmergencyAlternatives(
+  reference: EmergencyAreaReference,
+  affectedTapIds: string[],
+  alternativeTapIds: string[],
+  confirmedTankIds: string[],
+  signal?: AbortSignal,
+) {
+  return request<{ rankings: EmergencyAlternativeRanking[] }>(
+    "/analysis/emergency-rankings",
+    signal,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...reference,
+        affectedTapIds,
+        alternativeTapIds,
+        confirmedTankIds,
+      }),
+    },
+  )
+}
+
+export function generateEmergencyCoverage(
+  reference: EmergencyAreaReference,
+  alternativeTapIds: string[],
+  confirmedTankIds: string[],
+  contours: number[],
+  signal?: AbortSignal,
+) {
+  return request<EmergencyCoverage>(
+    "/analysis/emergency-coverage",
+    signal,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...reference,
+        alternativeTapIds,
+        confirmedTankIds,
+        contours,
+      }),
+    },
   )
 }
 
@@ -331,21 +457,14 @@ const waterBalanceTankColumnNames = new Set([
   "tankno",
   "tanknumber",
 ])
-const waterBalanceValueColumnNames = new Set([
-  "balance",
-  "balancevalue",
-  "waterbalance",
-  "waterbalancevalue",
-  "netbalance",
+const waterSupplyColumnNames = new Set(["watersupply"])
+const waterSupplyPopulationColumnNames = new Set([
+  "watersupplypopulation",
+  "supplypopulation",
 ])
-const waterDemandColumnNames = new Set([
-  "demand",
-  "demandvalue",
-  "waterdemand",
-  "waterdemandvalue",
-])
+const waterDemandColumnNames = new Set(["waterdemand"])
 
-export async function getTankWaterBalances(
+export async function getTankWaterSupply(
   signal?: AbortSignal,
 ): Promise<TankWaterBalance[]> {
   const { tables } = await getTables(signal)
@@ -355,36 +474,43 @@ export async function getTankWaterBalances(
       waterBalanceTankColumnNames,
       /^tank(id|no|number)?$/,
     )
-    const balance = findColumn(
+    const waterSupply = findColumn(
       table.columns,
-      waterBalanceValueColumnNames,
-      /(^|water|net)balance(value)?$/,
+      waterSupplyColumnNames,
+      /^watersupply$/,
     )
-    if (!tank || !balance) return []
+    if (!tank || !waterSupply) return []
     return [{
       table,
       tank,
-      balance,
-      demand: findColumn(
+      waterSupply,
+      waterSupplyPopulation: findColumn(
+        table.columns,
+        waterSupplyPopulationColumnNames,
+        /^watersupplypopulation$/,
+      ),
+      waterDemand: findColumn(
         table.columns,
         waterDemandColumnNames,
-        /demand/,
+        /^waterdemand$/,
       ),
     }]
   })
   const namedCandidates = candidates.filter(({ table }) =>
-    /water.?balance|tank.?balance/i.test(table.name),
+    /water.?supply.?balance/i.test(table.name),
   )
   const matches = namedCandidates.length > 0 ? namedCandidates : candidates
   if (matches.length === 0) {
-    throw new Error("The tank water-balance table could not be identified.")
+    throw new Error(
+      "The tank water supply table with a water_supply column could not be identified.",
+    )
   }
   if (matches.length > 1) {
-    throw new Error("More than one tank water-balance table was found.")
+    throw new Error("More than one tank water supply table was found.")
   }
   const candidate = matches[0]
   if (!candidate) {
-    throw new Error("The tank water-balance table is unavailable.")
+    throw new Error("The tank water supply table is unavailable.")
   }
 
   const balances: TankWaterBalance[] = []
@@ -406,8 +532,13 @@ export async function getTankWaterBalances(
       }
       balances.push({
         tankId: String(tankId).trim(),
-        balance: numericValue(row[candidate.balance]),
-        demand: candidate.demand ? numericValue(row[candidate.demand]) : null,
+        waterSupply: numericValue(row[candidate.waterSupply]),
+        waterSupplyPopulation: candidate.waterSupplyPopulation
+          ? numericValue(row[candidate.waterSupplyPopulation])
+          : null,
+        waterDemand: candidate.waterDemand
+          ? numericValue(row[candidate.waterDemand])
+          : null,
       })
     }
     if (page.rows.length < pageSize) break

@@ -51,7 +51,7 @@ function WorkspaceRibbon() {
   const activate = (tool: ToolDefinition) => {
     if (tool.comingSoon) return
     if (tool.paneRegion) {
-      if (tool.id === "isochrone") {
+      if (tool.id === "accessibility") {
         setActiveMapTool("explore")
         if (
           availableCategories.includes("taps") &&
@@ -262,6 +262,8 @@ function RibbonTool({
             ? "water-balance-tool"
             : tool.id === "isochrone"
               ? "emergency-water-tool"
+              : tool.id === "accessibility"
+                ? "accessibility-tool"
             : undefined
       }
       className={`relative h-auto shrink-0 flex-col justify-center gap-1 rounded-sm text-muted-foreground transition-colors hover:bg-muted/80 hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring ${large ? "min-w-[54px] px-1.5 py-1 sm:min-w-[64px] sm:px-2.5" : medium ? "min-w-[45px] px-1 py-1 sm:min-w-[52px] sm:px-1.5" : "min-w-[36px] px-0.5 py-1 sm:min-w-[40px] sm:px-1"} ${active ? "bg-primary/10 text-primary ring-1 ring-inset ring-primary/35" : ""} ${tool.comingSoon ? "opacity-55" : ""}`}
@@ -310,6 +312,8 @@ function CompactRibbonTool({
             ? "water-balance-tool"
             : tool.id === "isochrone"
               ? "emergency-water-tool"
+              : tool.id === "accessibility"
+                ? "accessibility-tool"
             : undefined
       }
       className={`h-[23px] min-w-0 justify-start gap-1 rounded-sm px-1.5 text-[8px] text-muted-foreground hover:bg-muted/80 hover:text-foreground sm:h-6 sm:px-2 sm:text-[9px] ${active ? "bg-primary/10 text-primary" : ""} ${tool.comingSoon ? "opacity-55" : ""}`}

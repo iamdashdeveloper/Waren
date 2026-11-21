@@ -15,7 +15,7 @@ import Draw, { createBox } from "ol/interaction/Draw"
 import VectorLayer from "ol/layer/Vector"
 import VectorSource from "ol/source/Vector"
 import { getArea, getLength } from "ol/sphere"
-import { toLonLat } from "ol/proj"
+import { fromLonLat, toLonLat } from "ol/proj"
 import {
   Circle as CircleStyle,
   Fill,
@@ -36,14 +36,17 @@ import TankServiceAreasPanel, {
   type SelectedServiceArea,
 } from "@/components/map/TankServiceAreasPanel"
 import EmergencyWaterAccessibilityPanel from "@/components/map/EmergencyWaterAccessibilityPanel"
+import PointIsochronePanel from "@/components/map/PointIsochronePanel"
 import { contourColors } from "@/components/map/isochrone-styles"
 import WaterBalancePanel from "@/components/map/WaterBalancePanel"
+import FullScreenDataLoader from "@/components/map/FullScreenDataLoader"
 import PaneManager from "@/components/workspace/PaneManager"
 import { useWorkspace } from "@/components/workspace/workspace-context"
 import useTankServiceAreas, {
   type TankServiceGroup,
 } from "@/components/map/useTankServiceAreas"
 import useTankWaterBalances, {
+  classifyWaterSupply,
   type WaterBalanceStatus,
 } from "@/components/map/useTankWaterBalances"
 import {
@@ -58,8 +61,15 @@ import {
   getSpatialLayerGeoJSON,
   getSpatialLayers,
   getSupplyRelationships,
+  getEmergencyAreaDetails,
   getEmergencyWaterPointSchema,
+  generateEmergencyCoverage,
   generateEmergencyWaterIsochrone,
+  rankEmergencyAlternatives,
+  type EmergencyAlternativeRanking,
+  type EmergencyAreaDetails,
+  type EmergencyCoverage,
+  type EmergencyAreaReference,
   type EmergencyWaterPointSchema,
   type CampContext,
   type EmergencyWaterIsochrone,
@@ -67,6 +77,7 @@ import {
   type SpatialFeatureCollection,
   type SpatialLayerMetadata,
   type SupplyRelationshipColumns,
+  type TankWaterBalance,
 } from "@/lib/api"
 import { useSpatialContext } from "@/components/map/spatial-context"
 import {
@@ -79,11 +90,109 @@ import { Button } from "@/components/ui/button"
 const CARTO_DARK_STYLE =
   "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
 const geoJSONFormat = new GeoJSON()
+const waterBalanceTargetLitresPerPersonPerDay = 20
 const waterBalanceColors: Record<WaterBalanceStatus, string> = {
-  excess: "#22c55e",
-  balanced: "#eab308",
-  deficient: "#ef4444",
+  adequate: "#22c55e",
+  warning: "#eab308",
+  danger: "#ef4444",
   unknown: "#94a3b8",
+}
+
+function renderWaterBalanceTooltip(
+  element: HTMLDivElement,
+  serviceCode: string,
+  balances: TankWaterBalance[],
+  isLoading: boolean,
+) {
+  const heading = document.createElement("p")
+  heading.className = "waren-water-balance-tooltip__heading"
+  heading.textContent = `Service area ${serviceCode}`
+  element.replaceChildren(heading)
+
+  if (balances.length === 0) {
+    const message = document.createElement("p")
+    message.textContent = isLoading
+      ? "Loading tank water balance…"
+      : "No linked tank water balance records are available."
+    element.append(message)
+    return
+  }
+
+  for (const balance of balances) {
+    const section = document.createElement("section")
+    section.className = "waren-water-balance-tooltip__tank"
+    const tankHeading = document.createElement("p")
+    tankHeading.className = "waren-water-balance-tooltip__tank-heading"
+    tankHeading.textContent = `Tank ${balance.tankId}`
+    section.append(tankHeading)
+
+    const population =
+      balance.waterSupplyPopulation !== null &&
+      Number.isFinite(balance.waterSupplyPopulation) &&
+      balance.waterSupplyPopulation >= 0
+        ? balance.waterSupplyPopulation.toLocaleString()
+        : "Not recorded"
+    const supply =
+      balance.waterSupply !== null && Number.isFinite(balance.waterSupply)
+        ? `${balance.waterSupply.toFixed(1)} L/person/day`
+        : "Not recorded"
+    const demand =
+      balance.waterDemand !== null && Number.isFinite(balance.waterDemand)
+        ? `${balance.waterDemand.toFixed(2)} m³/day`
+        : "Not recorded"
+
+    const overUnder =
+      balance.waterSupply !== null &&
+      Number.isFinite(balance.waterSupply) &&
+      balance.waterSupplyPopulation !== null &&
+      Number.isFinite(balance.waterSupplyPopulation) &&
+      balance.waterSupplyPopulation >= 0
+        ? ((balance.waterSupply - waterBalanceTargetLitresPerPersonPerDay) *
+            balance.waterSupplyPopulation) /
+          1000
+        : null
+    const overUnderText =
+      overUnder === null
+        ? "Not available"
+        : `${overUnder > 0 ? "+" : ""}${overUnder.toFixed(2)} m³/day ${
+            overUnder > 0
+              ? "excess"
+              : overUnder < 0
+                ? "deficit"
+                : "at target"
+          }`
+    const overUnderClass =
+      overUnder === null
+        ? ""
+        : overUnder > 0
+          ? "waren-water-balance-tooltip__positive"
+          : overUnder < 0
+            ? "waren-water-balance-tooltip__negative"
+            : ""
+
+    const rows: [string, string, string?][] = [
+      ["Water supply population", population],
+      ["Water supply", supply],
+      ["Water demand", demand],
+      [
+        "Over / under vs 20 L/person/day",
+        overUnderText,
+        overUnderClass,
+      ],
+    ]
+    for (const [label, value, valueClass = ""] of rows) {
+      const row = document.createElement("div")
+      row.className = "waren-water-balance-tooltip__row"
+      const labelElement = document.createElement("span")
+      labelElement.textContent = label
+      const valueElement = document.createElement("span")
+      valueElement.className = valueClass
+      valueElement.textContent = value
+      row.append(labelElement, valueElement)
+      section.append(row)
+    }
+    element.append(section)
+  }
 }
 const waterPointIdAliases = new Set([
   "id",
@@ -163,23 +272,38 @@ function waterPointProperties(
   const normalized = (name: string) => name.toLowerCase().replace(/[^a-z0-9]/g, "")
   const propertyValue = (aliases: Set<string>) =>
     entries.find(([key]) => aliases.has(normalized(key)))?.[1]
+  const table = String(feature.get("table") ?? "")
+  const geometry = feature.getGeometry()
+  const extent = geometry?.getExtent()
+  const coordinates = extent
+    ? ([...toLonLat(getCenter(extent))] as [number, number])
+    : undefined
+  const id =
+    normalizedId(schema ? feature.get(schema.identifierColumn) : undefined) ??
+    normalizedId(propertyValue(waterPointIdAliases))
+  const block = normalizedId(
+    schema?.blockColumn
+      ? feature.get(schema.blockColumn)
+      : propertyValue(waterPointBlockAliases),
+  )
+  const operationalStatus = normalizedId(
+    schema?.operationalStatusColumn
+      ? feature.get(schema.operationalStatusColumn)
+      : propertyValue(waterPointStatusAliases),
+  )
   return {
-    id:
-      normalizedId(
-        schema ? feature.get(schema.identifierColumn) : undefined,
-      ) ??
-      normalizedId(propertyValue(waterPointIdAliases)) ??
-      "",
-    block: normalizedId(
-      schema?.blockColumn
-        ? feature.get(schema.blockColumn)
-        : propertyValue(waterPointBlockAliases),
-    ),
-    operationalStatus: normalizedId(
-      schema?.operationalStatusColumn
-        ? feature.get(schema.operationalStatusColumn)
-        : propertyValue(waterPointStatusAliases),
-    ),
+    id: id ?? "",
+    block,
+    operationalStatus,
+    coordinates,
+    source: table.includes("tap")
+      ? "tap"
+      : table.includes("tank")
+        ? "tank"
+        : table.includes("bore")
+          ? "borehole"
+          : "map",
+    label: id ? `${table || "Feature"}${id ? ` · ${id}` : ""}` : null,
   }
 }
 
@@ -225,15 +349,17 @@ function normalizedOperationalStatus(value: unknown): string {
 
 function areaWaterBalanceStatus(
   tanks: TankServiceGroup[],
-  balances: Map<string, WaterBalanceStatus>,
+  supplies: Map<string, number | null>,
 ): WaterBalanceStatus {
-  const statuses = tanks
-    .map((tank) => balances.get(tank.tankId))
-    .filter((status): status is WaterBalanceStatus => status !== undefined)
-  if (statuses.includes("deficient")) return "deficient"
-  if (statuses.includes("balanced")) return "balanced"
-  if (statuses.includes("excess")) return "excess"
-  return "unknown"
+  if (tanks.length === 0) return "unknown"
+  const tankSupplies = tanks.map((tank) => supplies.get(tank.tankId))
+  const knownSupplies = tankSupplies.flatMap((supply) =>
+    supply !== undefined && supply !== null && Number.isFinite(supply)
+      ? [supply]
+      : [],
+  )
+  if (knownSupplies.length !== tankSupplies.length) return "unknown"
+  return classifyWaterSupply(Math.min(...knownSupplies))
 }
 
 function infrastructureMetrics(
@@ -641,10 +767,13 @@ function fitToSpatialContext(
   mapLayers: Record<string, VectorLayer>,
   tapsOverviewSource: VectorSource | null,
   useInitialExtent = false,
+  allCampsExtent: [number, number, number, number] | null = null,
 ) {
   const extent = createEmpty()
   if (camp?.extent?.every(Number.isFinite)) {
     extend(extent, camp.extent)
+  } else if (allCampsExtent?.every(Number.isFinite)) {
+    extend(extent, allCampsExtent)
   } else {
     for (const layer of Object.values(mapLayers)) {
       const source =
@@ -657,15 +786,32 @@ function fitToSpatialContext(
 
   if (extent.every(Number.isFinite)) {
     map.getView().fit(extent, {
-      padding: [useInitialExtent ? 32 : 132, 32, useInitialExtent ? 32 : 190, 32],
+      padding: useInitialExtent ? [32, 32, 32, 32] : [48, 32, 64, 32],
       maxZoom: 16,
       duration: 300,
     })
   }
 }
 
+function getCombinedCampExtent(
+  camps: CampContext[],
+): [number, number, number, number] | null {
+  const extents = camps.flatMap((camp) =>
+    camp.extent?.length === 4 && camp.extent.every(Number.isFinite)
+      ? [camp.extent]
+      : [],
+  )
+  if (extents.length === 0) return null
+  return [
+    Math.min(...extents.map(([minX]) => minX)),
+    Math.min(...extents.map(([, minY]) => minY)),
+    Math.max(...extents.map(([, , maxX]) => maxX)),
+    Math.max(...extents.map(([, , , maxY]) => maxY)),
+  ]
+}
+
 function MapView() {
-  const { selectedCamp, selectedCampId } = useSpatialContext()
+  const { camps, campsStatus, selectedCamp, selectedCampId } = useSpatialContext()
   const {
     activeCategories,
     setActiveCategories,
@@ -684,22 +830,43 @@ function MapView() {
     setMeasurementResult,
   } = useWorkspace()
   const tankServiceAreasActive = mapMode === "tankServiceAreas"
-  const waterBalanceActive = mapMode === "waterBalance"
+  const waterBalanceActive = isPaneOpen("waterBalance")
+  const waterBalanceTooltipOverlayRef = useRef<Overlay | null>(null)
+  const waterBalanceTooltipElementRef = useRef<HTMLDivElement | null>(null)
+  const waterBalanceActiveRef = useRef(waterBalanceActive)
+  const waterBalanceLoadingRef = useRef(false)
   const tankServiceAreas = useTankServiceAreas(
     tankServiceAreasActive || waterBalanceActive,
   )
   const waterBalances = useTankWaterBalances(waterBalanceActive)
+  const allCampsExtent = useMemo(() => getCombinedCampExtent(camps), [camps])
+  const allCampsExtentRef = useRef(allCampsExtent)
+  useEffect(() => {
+    allCampsExtentRef.current = allCampsExtent
+  }, [allCampsExtent])
   const mapElement = useRef<HTMLDivElement>(null)
   const mapInstance = useRef<OLMap | null>(null)
   const mapModeRef = useRef(mapMode)
   const isochroneActiveRef = useRef(false)
+  const analysisModeRef = useRef<"area" | "point">("area")
+  const activeAccessibilityWorkflowRef = useRef<"area" | "point" | null>(null)
   const didFitInitialExtentRef = useRef(false)
   const mapLayersRef = useRef<Record<string, VectorLayer>>({})
   const connectionLayerRef = useRef<VectorLayer | null>(null)
   const serviceAreaLayerRef = useRef<VectorLayer | null>(null)
   const isochroneLayerRef = useRef<VectorLayer | null>(null)
+  const emergencyAreaLayerRef = useRef<VectorLayer | null>(null)
+  const emergencyPointsLayerRef = useRef<VectorLayer | null>(null)
+  const emergencyCoverageLayerRef = useRef<VectorLayer | null>(null)
+  const emergencyUncoveredLayerRef = useRef<VectorLayer | null>(null)
   const isochroneRequestRef = useRef<AbortController | null>(null)
   const isochroneRequestIdRef = useRef(0)
+  const emergencyAreaRequestRef = useRef<AbortController | null>(null)
+  const emergencyAreaRequestIdRef = useRef(0)
+  const emergencyRankingRequestRef = useRef<AbortController | null>(null)
+  const emergencyRankingRequestIdRef = useRef(0)
+  const emergencyCoverageRequestRef = useRef<AbortController | null>(null)
+  const emergencyCoverageRequestIdRef = useRef(0)
   const selectedBoreholePulseRef = useRef<Overlay | null>(null)
   const hoveredConnectionRef = useRef<Feature | null>(null)
   const hoveredServiceAreaRef = useRef<Feature | null>(null)
@@ -726,6 +893,9 @@ function MapView() {
   const tapsOverviewSourceRef = useRef<VectorSource | null>(null)
   const selectedCampRef = useRef(selectedCamp)
   const waterPointSchemaRef = useRef<EmergencyWaterPointSchema | null>(null)
+  const selectEmergencyAreaActionRef = useRef<
+    (reference: EmergencyAreaReference) => void
+  >(() => undefined)
   const [layers, setLayers] = useState<MapLayer[]>([])
   const [layerStatuses, setLayerStatuses] = useState<Record<string, LayerStatus>>({})
   const [metrics, setMetrics] = useState<InfrastructureMetrics | null>(null)
@@ -745,6 +915,17 @@ function MapView() {
     useState<EmergencyWaterIsochrone | null>(null)
   const [isochroneLoading, setIsochroneLoading] = useState(false)
   const [isochroneError, setIsochroneError] = useState<string | null>(null)
+  const [emergencyArea, setEmergencyArea] =
+    useState<EmergencyAreaDetails | null>(null)
+  const [emergencyAreaRevision, setEmergencyAreaRevision] = useState(0)
+  const [emergencyRankings, setEmergencyRankings] =
+    useState<EmergencyAlternativeRanking[]>([])
+  const [emergencyCoverage, setEmergencyCoverage] =
+    useState<EmergencyCoverage | null>(null)
+  const [emergencyAreaLoading, setEmergencyAreaLoading] = useState(false)
+  const [emergencyRankingLoading, setEmergencyRankingLoading] = useState(false)
+  const [emergencyCoverageLoading, setEmergencyCoverageLoading] = useState(false)
+  const [emergencyError, setEmergencyError] = useState<string | null>(null)
   const [isConnectionSoundPending, setIsConnectionSoundPending] =
     useState(false)
   const [basemapError, setBasemapError] = useState(false)
@@ -770,12 +951,9 @@ function MapView() {
   const waterBalanceAreaCount = useMemo(
     () =>
       [...tankServiceAreas.byServiceCode.values()].filter((groups) =>
-        groups.some((tank) => {
-          const status = waterBalances.byTankId.get(tank.tankId)
-          return status !== undefined && status !== "unknown"
-        }),
+        areaWaterBalanceStatus(groups, waterBalances.supplyByTankId) !== "unknown",
       ).length,
-    [tankServiceAreas.byServiceCode, waterBalances.byTankId],
+    [tankServiceAreas.byServiceCode, waterBalances.supplyByTankId],
   )
   const waterBalanceTankCount = useMemo(
     () =>
@@ -786,6 +964,21 @@ function MapView() {
   )
   const activeMapToolRef = useRef(activeMapTool)
   const isEmergencyAnalysisOpen = isPaneOpen("isochrone")
+  const isPointAccessibilityOpen = isPaneOpen("accessibility")
+  const accessibilityWorkflow = isEmergencyAnalysisOpen
+    ? "area"
+    : isPointAccessibilityOpen
+      ? "point"
+      : null
+  useEffect(() => {
+    waterBalanceActiveRef.current = waterBalanceActive
+    waterBalanceLoadingRef.current = waterBalances.status === "loading"
+  }, [waterBalanceActive, waterBalances.status])
+  useEffect(() => {
+    if (!waterBalanceActive) {
+      waterBalanceTooltipOverlayRef.current?.setPosition(undefined)
+    }
+  }, [waterBalanceActive])
   const closeInfrastructureCard = useCallback(() => {
     cancelConnectionSoundRef.current?.()
     cancelConnectionSoundRef.current = null
@@ -803,11 +996,51 @@ function MapView() {
     }
   }, [closePane])
 
+  const clearEmergencyPlan = useCallback(() => {
+    emergencyAreaRequestIdRef.current += 1
+    emergencyAreaRequestRef.current?.abort()
+    emergencyAreaRequestRef.current = null
+    emergencyRankingRequestIdRef.current += 1
+    emergencyRankingRequestRef.current?.abort()
+    emergencyRankingRequestRef.current = null
+    emergencyCoverageRequestIdRef.current += 1
+    emergencyCoverageRequestRef.current?.abort()
+    emergencyCoverageRequestRef.current = null
+    emergencyAreaLayerRef.current?.getSource()?.clear(true)
+    emergencyPointsLayerRef.current?.getSource()?.clear(true)
+    emergencyCoverageLayerRef.current?.getSource()?.clear(true)
+    emergencyUncoveredLayerRef.current?.getSource()?.clear(true)
+    setEmergencyArea(null)
+    setEmergencyAreaRevision((revision) => revision + 1)
+    setEmergencyRankings([])
+    setEmergencyCoverage(null)
+    setEmergencyAreaLoading(false)
+    setEmergencyRankingLoading(false)
+    setEmergencyCoverageLoading(false)
+    setEmergencyError(null)
+  }, [])
+
+  const invalidateEmergencyRanking = useCallback(() => {
+    emergencyRankingRequestIdRef.current += 1
+    emergencyRankingRequestRef.current?.abort()
+    emergencyRankingRequestRef.current = null
+    emergencyCoverageRequestIdRef.current += 1
+    emergencyCoverageRequestRef.current?.abort()
+    emergencyCoverageRequestRef.current = null
+    emergencyCoverageLayerRef.current?.getSource()?.clear(true)
+    emergencyUncoveredLayerRef.current?.getSource()?.clear(true)
+    setEmergencyRankings([])
+    setEmergencyCoverage(null)
+    setEmergencyRankingLoading(false)
+    setEmergencyCoverageLoading(false)
+  }, [])
+
   const clearIsochroneAnalysis = useCallback(() => {
     isochroneRequestIdRef.current += 1
     isochroneRequestRef.current?.abort()
     isochroneRequestRef.current = null
     isochroneLayerRef.current?.getSource()?.clear(true)
+    clearEmergencyPlan()
     selectionSourceRef.current?.clear(true)
     selectionExtentRef.current = null
     setSelectedWaterPoint(null)
@@ -816,17 +1049,299 @@ function MapView() {
     setIsochroneLoading(false)
     setToolUiState("zoomToSelection", { active: false, disabled: true })
     setToolUiState("clearSelection", { active: false, disabled: true })
-  }, [setToolUiState])
+  }, [clearEmergencyPlan, setToolUiState])
 
-  const exitIsochroneAnalysis = useCallback(() => {
+  const selectEmergencyArea = useCallback(
+    async (reference: EmergencyAreaReference) => {
+      emergencyAreaRequestRef.current?.abort()
+      emergencyRankingRequestRef.current?.abort()
+      emergencyCoverageRequestRef.current?.abort()
+      emergencyRankingRequestIdRef.current += 1
+      emergencyCoverageRequestIdRef.current += 1
+      emergencyAreaLayerRef.current?.getSource()?.clear(true)
+      emergencyPointsLayerRef.current?.getSource()?.clear(true)
+      emergencyCoverageLayerRef.current?.getSource()?.clear(true)
+      emergencyUncoveredLayerRef.current?.getSource()?.clear(true)
+      isochroneRequestRef.current?.abort()
+      isochroneRequestRef.current = null
+      isochroneLayerRef.current?.getSource()?.clear(true)
+      setSelectedWaterPoint(null)
+      setIsochroneResult(null)
+      setIsochroneError(null)
+      setEmergencyArea(null)
+      setEmergencyAreaRevision((revision) => revision + 1)
+      setEmergencyRankings([])
+      setEmergencyCoverage(null)
+      setEmergencyError(null)
+      const controller = new AbortController()
+      emergencyAreaRequestRef.current = controller
+      const requestId = ++emergencyAreaRequestIdRef.current
+      setEmergencyAreaLoading(true)
+      try {
+        const response = await getEmergencyAreaDetails(reference, controller.signal)
+        if (
+          controller.signal.aborted ||
+          requestId !== emergencyAreaRequestIdRef.current
+        ) {
+          return
+        }
+        if (
+          !response.area ||
+          typeof response.area.geometry !== "object" ||
+          !Array.isArray(response.affectedTaps) ||
+          !Array.isArray(response.alternativeTaps) ||
+          !Array.isArray(response.alternativeTanks)
+        ) {
+          throw new Error("The emergency-area endpoint returned invalid data.")
+        }
+        const areaFeatures = geoJSONFormat.readFeatures(
+          {
+            type: "FeatureCollection",
+            features: [{
+              type: "Feature",
+              geometry: response.area.geometry as object,
+              properties: {
+                serviceCode: response.area.serviceCode,
+                table: response.area.table,
+              },
+            }],
+          },
+          {
+            dataProjection: "EPSG:4326",
+            featureProjection: "EPSG:3857",
+          },
+        )
+        emergencyAreaLayerRef.current?.getSource()?.addFeatures(areaFeatures)
+        const points = [
+          ...response.affectedTaps.map((point) => ({
+            ...point,
+            planType: "affected",
+          })),
+          ...response.alternativeTaps.map((point) => ({
+            ...point,
+            planType: "alternative-tap",
+          })),
+          ...response.alternativeTanks.map((point) => ({
+            ...point,
+            planType: "alternative-tank",
+          })),
+        ].map((point) =>
+          new Feature({
+            geometry: new Point(fromLonLat(point.coordinates)),
+            id: point.id,
+            planType: point.planType,
+            source: point.source,
+          }),
+        )
+        emergencyPointsLayerRef.current?.getSource()?.addFeatures(points)
+        setEmergencyArea(response)
+      } catch (error) {
+        if (
+          controller.signal.aborted ||
+          requestId !== emergencyAreaRequestIdRef.current
+        ) {
+          return
+        }
+        setEmergencyError(
+          error instanceof Error
+            ? error.message
+            : "Unable to load water points in this polygon.",
+        )
+      } finally {
+        if (requestId === emergencyAreaRequestIdRef.current) {
+          setEmergencyAreaLoading(false)
+          emergencyAreaRequestRef.current = null
+        }
+      }
+    },
+    [],
+  )
+
+  const rankEmergencyPlan = useCallback(
+    async (
+      affectedTapIds: string[],
+      alternativeTapIds: string[],
+      confirmedTankIds: string[],
+    ) => {
+      if (!emergencyArea) {
+        setEmergencyError("Select a polygon before ranking alternatives.")
+        return
+      }
+      emergencyRankingRequestRef.current?.abort()
+      emergencyCoverageRequestRef.current?.abort()
+      emergencyCoverageRequestIdRef.current += 1
+      emergencyCoverageLayerRef.current?.getSource()?.clear(true)
+      emergencyUncoveredLayerRef.current?.getSource()?.clear(true)
+      setEmergencyCoverage(null)
+      setEmergencyRankings([])
+      const controller = new AbortController()
+      emergencyRankingRequestRef.current = controller
+      const requestId = ++emergencyRankingRequestIdRef.current
+      setEmergencyRankingLoading(true)
+      setEmergencyError(null)
+      try {
+        const response = await rankEmergencyAlternatives(
+          {
+            schema: emergencyArea.area.schema,
+            table: emergencyArea.area.table,
+            serviceCode: emergencyArea.area.serviceCode,
+          },
+          affectedTapIds,
+          alternativeTapIds,
+          confirmedTankIds,
+          controller.signal,
+        )
+        if (
+          controller.signal.aborted ||
+          requestId !== emergencyRankingRequestIdRef.current
+        ) {
+          return
+        }
+        if (!Array.isArray(response.rankings)) {
+          throw new Error("The ranking endpoint returned invalid data.")
+        }
+        setEmergencyRankings(response.rankings)
+      } catch (error) {
+        if (
+          controller.signal.aborted ||
+          requestId !== emergencyRankingRequestIdRef.current
+        ) {
+          return
+        }
+        setEmergencyError(
+          error instanceof Error
+            ? error.message
+            : "Unable to rank emergency alternatives.",
+        )
+      } finally {
+        if (requestId === emergencyRankingRequestIdRef.current) {
+          setEmergencyRankingLoading(false)
+          emergencyRankingRequestRef.current = null
+        }
+      }
+    },
+    [emergencyArea],
+  )
+
+  const generateEmergencyPlanCoverage = useCallback(
+    async (
+      alternativeTapIds: string[],
+      confirmedTankIds: string[],
+      contours: number[],
+    ) => {
+      if (!emergencyArea) {
+        setEmergencyError("Select a polygon before generating coverage.")
+        return
+      }
+      emergencyCoverageRequestRef.current?.abort()
+      const controller = new AbortController()
+      emergencyCoverageRequestRef.current = controller
+      const requestId = ++emergencyCoverageRequestIdRef.current
+      setEmergencyCoverageLoading(true)
+      setEmergencyError(null)
+      emergencyCoverageLayerRef.current?.getSource()?.clear(true)
+      emergencyUncoveredLayerRef.current?.getSource()?.clear(true)
+      setEmergencyCoverage(null)
+      try {
+        const response = await generateEmergencyCoverage(
+          {
+            schema: emergencyArea.area.schema,
+            table: emergencyArea.area.table,
+            serviceCode: emergencyArea.area.serviceCode,
+          },
+          alternativeTapIds,
+          confirmedTankIds,
+          contours,
+          controller.signal,
+        )
+        if (
+          controller.signal.aborted ||
+          requestId !== emergencyCoverageRequestIdRef.current
+        ) {
+          return
+        }
+        if (
+          response.type !== "FeatureCollection" ||
+          !Array.isArray(response.features) ||
+          !Array.isArray(response.coverage)
+        ) {
+          throw new Error("The coverage endpoint returned invalid GeoJSON.")
+        }
+        const coverageFeatures = geoJSONFormat.readFeatures(
+          { type: "FeatureCollection", features: response.features },
+          {
+            dataProjection: "EPSG:4326",
+            featureProjection: "EPSG:3857",
+          },
+        )
+        emergencyCoverageLayerRef.current
+          ?.getSource()
+          ?.addFeatures(coverageFeatures)
+        const longestContour = Math.max(
+          ...response.coverage.map((band) => band.contourSeconds),
+        )
+        const longestBand = response.coverage.find(
+          (band) => band.contourSeconds === longestContour,
+        )
+        if (
+          longestBand?.uncoveredGeometry &&
+          typeof longestBand.uncoveredGeometry === "object"
+        ) {
+          const uncoveredFeatures = geoJSONFormat.readFeatures(
+            {
+              type: "FeatureCollection",
+              features: [{
+                type: "Feature",
+                geometry: longestBand.uncoveredGeometry as object,
+                properties: { planType: "uncovered" },
+              }],
+            },
+            {
+              dataProjection: "EPSG:4326",
+              featureProjection: "EPSG:3857",
+            },
+          )
+          emergencyUncoveredLayerRef.current
+            ?.getSource()
+            ?.addFeatures(uncoveredFeatures)
+        }
+        setEmergencyCoverage(response)
+      } catch (error) {
+        if (
+          controller.signal.aborted ||
+          requestId !== emergencyCoverageRequestIdRef.current
+        ) {
+          return
+        }
+        setEmergencyError(
+          error instanceof Error
+            ? error.message
+            : "Unable to generate emergency coverage.",
+        )
+      } finally {
+        if (requestId === emergencyCoverageRequestIdRef.current) {
+          setEmergencyCoverageLoading(false)
+          emergencyCoverageRequestRef.current = null
+        }
+      }
+    },
+    [emergencyArea],
+  )
+
+  const exitEmergencyAccessibility = useCallback(() => {
     clearIsochroneAnalysis()
     closePane("isochrone")
   }, [clearIsochroneAnalysis, closePane])
 
+  const exitPointAccessibility = useCallback(() => {
+    clearIsochroneAnalysis()
+    closePane("accessibility")
+  }, [clearIsochroneAnalysis, closePane])
+
   const generateIsochrone = useCallback(
     async (contours: number[], confirmUnverifiedStatus: boolean) => {
-      if (!selectedWaterPoint?.id) {
-        setIsochroneError("Select a water point with a valid dataset identifier first.")
+      if (!selectedWaterPoint?.coordinates) {
+        setIsochroneError("Select a location on the map first.")
         return
       }
 
@@ -841,7 +1356,7 @@ function MapView() {
 
       try {
         const response = await generateEmergencyWaterIsochrone(
-          selectedWaterPoint.id,
+          selectedWaterPoint,
           contours,
           confirmUnverifiedStatus,
           controller.signal,
@@ -895,9 +1410,40 @@ function MapView() {
   )
 
   useEffect(() => {
-    isochroneActiveRef.current = isEmergencyAnalysisOpen
-    if (!isochroneActiveRef.current) clearIsochroneAnalysis()
-  }, [clearIsochroneAnalysis, isEmergencyAnalysisOpen])
+    isochroneActiveRef.current = accessibilityWorkflow !== null
+    analysisModeRef.current =
+      accessibilityWorkflow === "area" ? "area" : "point"
+    if (
+      activeAccessibilityWorkflowRef.current !== null &&
+      activeAccessibilityWorkflowRef.current !== accessibilityWorkflow
+    ) {
+      clearIsochroneAnalysis()
+    }
+    activeAccessibilityWorkflowRef.current = accessibilityWorkflow
+  }, [accessibilityWorkflow, clearIsochroneAnalysis])
+
+  useEffect(() => {
+    selectEmergencyAreaActionRef.current = selectEmergencyArea
+    isochroneLayerRef.current?.setVisible(
+      isPointAccessibilityOpen,
+    )
+    emergencyAreaLayerRef.current?.setVisible(
+      isEmergencyAnalysisOpen,
+    )
+    emergencyPointsLayerRef.current?.setVisible(
+      isEmergencyAnalysisOpen,
+    )
+    emergencyCoverageLayerRef.current?.setVisible(
+      isEmergencyAnalysisOpen,
+    )
+    emergencyUncoveredLayerRef.current?.setVisible(
+      isEmergencyAnalysisOpen,
+    )
+  }, [
+    isEmergencyAnalysisOpen,
+    isPointAccessibilityOpen,
+    selectEmergencyArea,
+  ])
 
   function serviceAreaStyle(feature: FeatureLike, hovered: boolean) {
     const color = String(feature.get("serviceColor") ?? "#38bdf8")
@@ -1035,6 +1581,18 @@ function MapView() {
     map.addOverlay(measurementOverlay)
     measurementOverlayRef.current = measurementOverlay
     measurementTooltipElementRef.current = measurementTooltip
+    const waterBalanceTooltip = document.createElement("div")
+    waterBalanceTooltip.className = "waren-water-balance-tooltip"
+    waterBalanceTooltip.setAttribute("role", "tooltip")
+    const waterBalanceTooltipOverlay = new Overlay({
+      element: waterBalanceTooltip,
+      positioning: "bottom-center",
+      offset: [0, -12],
+      stopEvent: false,
+    })
+    map.addOverlay(waterBalanceTooltipOverlay)
+    waterBalanceTooltipOverlayRef.current = waterBalanceTooltipOverlay
+    waterBalanceTooltipElementRef.current = waterBalanceTooltip
     const connectionLayer = new VectorLayer({
       source: new VectorSource(),
       zIndex: 20,
@@ -1070,6 +1628,77 @@ function MapView() {
     })
     map.addLayer(isochroneLayer)
     isochroneLayerRef.current = isochroneLayer
+    isochroneLayer.setVisible(false)
+    const emergencyAreaLayer = new VectorLayer({
+      source: new VectorSource(),
+      style: new Style({
+        fill: new Fill({ color: "rgba(14, 165, 233, 0.12)" }),
+        stroke: new Stroke({ color: "#38bdf8", width: 3, lineDash: [8, 4] }),
+      }),
+      zIndex: 32,
+      visible: false,
+    })
+    map.addLayer(emergencyAreaLayer)
+    emergencyAreaLayerRef.current = emergencyAreaLayer
+    const emergencyCoverageLayer = new VectorLayer({
+      source: new VectorSource(),
+      style: (feature) => {
+        const color = contourColors[Math.round(Number(feature.get("contourSeconds")) / 60)]
+        if (!color) return undefined
+        return new Style({
+          fill: new Fill({ color: withOpacity(color, 0.18) }),
+          stroke: new Stroke({ color, width: 2, lineDash: [7, 4] }),
+        })
+      },
+      zIndex: 34,
+      visible: false,
+    })
+    map.addLayer(emergencyCoverageLayer)
+    emergencyCoverageLayerRef.current = emergencyCoverageLayer
+    const emergencyUncoveredLayer = new VectorLayer({
+      source: new VectorSource(),
+      style: new Style({
+        fill: new Fill({ color: "rgba(251, 113, 133, 0.18)" }),
+        stroke: new Stroke({ color: "#fb7185", width: 2, lineDash: [3, 5] }),
+      }),
+      zIndex: 35,
+      visible: false,
+    })
+    map.addLayer(emergencyUncoveredLayer)
+    emergencyUncoveredLayerRef.current = emergencyUncoveredLayer
+    const emergencyPointsLayer = new VectorLayer({
+      source: new VectorSource(),
+      style: (feature) => {
+        const planType = feature.get("planType")
+        const color =
+          planType === "affected"
+            ? "#fb7185"
+            : planType === "alternative-tank"
+              ? "#fbbf24"
+              : "#34d399"
+        return new Style({
+          image: new CircleStyle({
+            radius: planType === "affected" ? 7 : 6,
+            fill: new Fill({ color }),
+            stroke: new Stroke({ color: "#0f172a", width: 2 }),
+          }),
+          text: new Text({
+            text:
+              planType === "affected"
+                ? "!"
+                : planType === "alternative-tank"
+                  ? "T"
+                  : "+",
+            fill: new Fill({ color: "#0f172a" }),
+            font: "bold 10px sans-serif",
+          }),
+        })
+      },
+      zIndex: 38,
+      visible: false,
+    })
+    map.addLayer(emergencyPointsLayer)
+    emergencyPointsLayerRef.current = emergencyPointsLayer
     const selectionSource = new VectorSource()
     const selectionLayer = new VectorLayer({
       source: selectionSource,
@@ -1108,55 +1737,119 @@ function MapView() {
     measurementSourceRef.current = measurementSource
     const handleSingleClick = (event: { pixel: number[]; coordinate: number[] }) => {
       if (isochroneActiveRef.current) {
-        const selectedTap: { value: FeatureLike | null } = { value: null }
-        map.forEachFeatureAtPixel(
-          event.pixel,
-          (feature, layer) => {
-            if (
-              String(layer?.get("table")).toLowerCase() !== "taps"
-            ) {
-              return undefined
-            }
-            selectedTap.value = feature
-            return feature
-          },
-          {
-            layerFilter: (layer) =>
-              String(layer.get("table")).toLowerCase() === "taps",
-            hitTolerance: 12,
-          },
-        )
-        if (!selectedTap.value) {
-          setIsochroneError("Click an existing tap marker to select a water point.")
+        if (analysisModeRef.current === "area") {
+          let selectedArea: EmergencyAreaReference | null = null
+          map.forEachFeatureAtPixel(
+            event.pixel,
+            (feature, layer) => {
+              const isSpatialDataLayer = Object.values(mapLayersRef.current).some(
+                (spatialLayer) => spatialLayer === layer,
+              )
+              if (!isSpatialDataLayer) return undefined
+              const geometry = feature.getGeometry()
+              if (
+                !geometry ||
+                !["Polygon", "MultiPolygon"].includes(geometry.getType())
+              ) {
+                return undefined
+              }
+              const properties = feature.getProperties()
+              const serviceCode = normalizedId(
+                Object.entries(properties).find(
+                  ([key]) => key.toLowerCase().replace(/[^a-z0-9]/g, "") === "servicecode",
+                )?.[1],
+              )
+              const table = String(layer?.get("table") ?? "")
+              const schema = String(layer?.get("schema") ?? "")
+              if (!serviceCode || !table || !schema) return undefined
+              selectedArea = { schema, table, serviceCode }
+              return feature
+            },
+            { hitTolerance: 4 },
+          )
+          if (!selectedArea) {
+            setEmergencyError(
+              "Click a mapped polygon with a service_code value to define the affected area.",
+            )
+            return
+          }
+          selectEmergencyAreaActionRef.current(selectedArea)
           return
         }
 
-        const waterPoint = waterPointProperties(
-          selectedTap.value,
-          waterPointSchemaRef.current,
+        const selectedFeature: { value: FeatureLike | null; table: string } = {
+          value: null,
+          table: "",
+        }
+        map.forEachFeatureAtPixel(
+          event.pixel,
+          (feature, layer) => {
+            selectedFeature.value = feature
+            selectedFeature.table = String(layer?.get("table") ?? "")
+            return feature
+          },
+          { hitTolerance: 12 },
         )
+
+        let waterPoint: EmergencyWaterPoint
+        if (selectedFeature.value) {
+          waterPoint = waterPointProperties(
+            selectedFeature.value,
+            selectedFeature.table.includes("tap")
+              ? waterPointSchemaRef.current
+              : null,
+          )
+          if (!waterPoint.coordinates) {
+            const geometry = selectedFeature.value.getGeometry()
+            const extent = geometry?.getExtent()
+            if (extent) {
+              waterPoint.coordinates = [...toLonLat(getCenter(extent))] as [number, number]
+            }
+          }
+          waterPoint.source = selectedFeature.table.includes("tap")
+            ? "tap"
+            : selectedFeature.table.includes("tank")
+              ? "tank"
+              : selectedFeature.table.includes("bore")
+                ? "borehole"
+                : "map"
+          if (!waterPoint.id) {
+            const properties = selectedFeature.value.getProperties()
+            const possibleId = ["id", "tank_id", "bh_id", "name", "no"]
+              .map((key) => properties[key])
+              .find((value) => value !== null && value !== undefined && String(value).trim())
+            waterPoint.id = possibleId ? String(possibleId).trim() : `${waterPoint.source}-${Date.now()}`
+          }
+          waterPoint.label = `${selectedFeature.table || "Map feature"} · ${waterPoint.id}`
+        } else {
+          const [longitude, latitude] = toLonLat(event.coordinate)
+          waterPoint = {
+            id: `map-point-${longitude.toFixed(6)}-${latitude.toFixed(6)}`,
+            block: null,
+            operationalStatus: null,
+            coordinates: [longitude, latitude],
+            source: "map",
+            label: `Map point · ${latitude.toFixed(5)}, ${longitude.toFixed(5)}`,
+          }
+        }
+
         isochroneRequestIdRef.current += 1
         isochroneRequestRef.current?.abort()
         isochroneRequestRef.current = null
         isochroneLayerRef.current?.getSource()?.clear(true)
         setIsochroneLoading(false)
         setIsochroneResult(null)
-        setIsochroneError(
-          waterPoint.id
-            ? null
-            : "This tap has no supported identifier in its dataset record.",
-        )
+        setIsochroneError(null)
         setSelectedWaterPoint(waterPoint)
         setSelectedServiceArea(null)
         setSelectedInfrastructure(null)
         closePane("infrastructureDetails")
         selectionSourceRef.current?.clear(true)
-        if (selectedTap.value instanceof Feature) {
-          const selectedGeometry = selectedTap.value.getGeometry()
-          const highlight = selectedTap.value.clone()
+        if (selectedFeature.value instanceof Feature) {
+          const selectedGeometry = selectedFeature.value.getGeometry()
+          const highlight = selectedFeature.value.clone()
           selectionSourceRef.current?.addFeature(highlight)
-          selectionExtentRef.current =
-            selectedGeometry?.getExtent() ?? null
+          selectionExtentRef.current = selectedGeometry?.getExtent() ?? null
           setToolUiState("zoomToSelection", { active: false, disabled: false })
           setToolUiState("clearSelection", { active: false, disabled: false })
         }
@@ -1339,6 +2032,27 @@ function MapView() {
         hoveredServiceAreaRef.current = hoveredArea
         serviceAreaLayer.changed()
       }
+      const waterBalanceTooltip = waterBalanceTooltipElementRef.current
+      const areaUnderPointer = hoveredArea as Feature | null
+      if (
+        waterBalanceActiveRef.current &&
+        areaUnderPointer &&
+        waterBalanceTooltip
+      ) {
+        const tankBalances =
+          areaUnderPointer.get("tankWaterBalances") as
+            | TankWaterBalance[]
+            | undefined
+        renderWaterBalanceTooltip(
+          waterBalanceTooltip,
+          String(areaUnderPointer.get("serviceCode") ?? ""),
+          tankBalances ?? [],
+          waterBalanceLoadingRef.current,
+        )
+        waterBalanceTooltipOverlayRef.current?.setPosition(event.coordinate)
+      } else {
+        waterBalanceTooltipOverlayRef.current?.setPosition(undefined)
+      }
       let hovered: Feature | null = null
       map.forEachFeatureAtPixel(
         event.pixel,
@@ -1443,6 +2157,7 @@ function MapView() {
         if (disposed) return
 
         map.addLayer(vectorLayer)
+        vectorLayer.set("schema", layer.schema)
         vectorLayer.set("table", layer.table)
         mapLayersRef.current[layer.id] = vectorLayer
         if (layer.table.toLowerCase() === "taps") {
@@ -1460,6 +2175,8 @@ function MapView() {
             null,
             mapLayersRef.current,
             tapsOverviewSourceRef.current,
+            false,
+            allCampsExtentRef.current,
           )
         }
       } catch (error) {
@@ -1475,7 +2192,9 @@ function MapView() {
         if (!Array.isArray(metadata) || !metadata.every(isSpatialLayerMetadata)) {
           throw new Error("The spatial layer catalog response is invalid.")
         }
-        const discovered = describeSpatialLayers(metadata)
+        const discovered = describeSpatialLayers(
+          metadata.filter((layer) => !/compound/i.test(layer.table)),
+        )
         setLayers(discovered)
           const categories = infrastructureCategories
             .filter((category) =>
@@ -1507,7 +2226,14 @@ function MapView() {
       connectionRequestRef.current = null
       isochroneRequestRef.current?.abort()
       isochroneRequestRef.current = null
+      emergencyAreaRequestRef.current?.abort()
+      emergencyRankingRequestRef.current?.abort()
+      emergencyCoverageRequestRef.current?.abort()
       isochroneLayerRef.current = null
+      emergencyAreaLayerRef.current = null
+      emergencyPointsLayerRef.current = null
+      emergencyCoverageLayerRef.current = null
+      emergencyUncoveredLayerRef.current = null
       cancelConnectionSoundRef.current?.()
       cancelConnectionSoundRef.current = null
       map.setTarget(undefined)
@@ -1518,6 +2244,8 @@ function MapView() {
       selectedBoreholePulseRef.current = null
       hoveredConnectionRef.current = null
       hoveredServiceAreaRef.current = null
+      waterBalanceTooltipOverlayRef.current = null
+      waterBalanceTooltipElementRef.current = null
       tapsOverviewSourceRef.current = null
       selectionSourceRef.current = null
       measurementSourceRef.current = null
@@ -1838,14 +2566,14 @@ function MapView() {
       mapLayersRef.current,
       tapsOverviewSourceRef.current,
       !didFitInitialExtentRef.current,
+      allCampsExtent,
     )
-    if (!didFitInitialExtentRef.current) {
-      homeExtentRef.current =
-        selectedCamp?.extent ??
-        map.getView().calculateExtent(map.getSize())
-    }
+    homeExtentRef.current =
+      selectedCamp?.extent ??
+      allCampsExtent ??
+      map.getView().calculateExtent(map.getSize())
     didFitInitialExtentRef.current = true
-  }, [layerStatuses, selectedCamp, selectedCampId])
+  }, [allCampsExtent, layerStatuses, selectedCamp, selectedCampId])
 
   useEffect(() => {
     setMetrics(infrastructureMetrics(mapLayersRef.current, selectedCamp))
@@ -1928,7 +2656,7 @@ function MapView() {
         if (!serviceCode || !groups || !primaryTank) continue
         const highlighted = feature.clone()
         const balanceStatus = waterBalanceActive
-          ? areaWaterBalanceStatus(groups, waterBalances.byTankId)
+          ? areaWaterBalanceStatus(groups, waterBalances.supplyByTankId)
           : null
         highlighted.set("serviceCode", serviceCode, true)
         highlighted.set(
@@ -1940,6 +2668,14 @@ function MapView() {
           highlighted.set("waterBalanceStatus", balanceStatus, true)
         }
         highlighted.set("tankGroups", groups, true)
+        highlighted.set(
+          "tankWaterBalances",
+          groups.flatMap((group) => {
+            const balance = waterBalances.detailsByTankId.get(group.tankId)
+            return balance ? [balance] : []
+          }),
+          true,
+        )
         serviceFeatures.push(highlighted)
       }
     }
@@ -1952,7 +2688,8 @@ function MapView() {
     tankServiceAreas.status,
     tankServiceAreasActive,
     waterBalanceActive,
-    waterBalances.byTankId,
+    waterBalances.detailsByTankId,
+    waterBalances.supplyByTankId,
     selectedCamp,
     selectedCampId,
   ])
@@ -2127,8 +2864,10 @@ function MapView() {
       selectedCamp,
       mapLayersRef.current,
       tapsOverviewSourceRef.current,
+      false,
+      allCampsExtent,
     )
-  }, [selectedCamp])
+  }, [allCampsExtent, selectedCamp])
   const fitExtent = useCallback((extent: number[] | null) => {
     const map = mapInstance.current
     if (!map || !extent?.every(Number.isFinite)) return
@@ -2142,8 +2881,10 @@ function MapView() {
       null,
       mapLayersRef.current,
       tapsOverviewSourceRef.current,
+      false,
+      allCampsExtent,
     )
-  }, [])
+  }, [allCampsExtent])
   const homeExtent = useCallback(() => {
     fitExtent(homeExtentRef.current ?? selectedCamp?.extent ?? null)
   }, [fitExtent, selectedCamp])
@@ -2426,6 +3167,11 @@ function MapView() {
     setActiveMapTool("identify")
   }
 
+  const isInitialDataLoading =
+    campsStatus === "loading" ||
+    catalogStatus === "loading" ||
+    Object.values(layerStatuses).some((status) => status === "loading")
+
   return (
     <section
       aria-label="Kakuma–Kalobeyei spatial workspace"
@@ -2486,16 +3232,46 @@ function MapView() {
                   ? "error"
                   : waterBalances.status
               }
+              selected={selectedServiceArea}
+              supplyByTankId={waterBalances.supplyByTankId}
               tankCount={waterBalanceTankCount}
             />
           ),
           isochrone: (
             <EmergencyWaterAccessibilityPanel
+              emergencyArea={emergencyArea}
+              emergencyAreaRevision={emergencyAreaRevision}
+              error={emergencyError}
+              coverage={emergencyCoverage}
+              isAreaLoading={emergencyAreaLoading}
+              isRankingLoading={emergencyRankingLoading}
+              isCoverageLoading={emergencyCoverageLoading}
+              onClear={exitEmergencyAccessibility}
+              onGenerateCoverage={(alternativeTapIds, confirmedTankIds, contours) =>
+                void generateEmergencyPlanCoverage(
+                  alternativeTapIds,
+                  confirmedTankIds,
+                  contours,
+                )
+              }
+              onRankAlternatives={(affectedTapIds, alternativeTapIds, confirmedTankIds) =>
+                void rankEmergencyPlan(
+                  affectedTapIds,
+                  alternativeTapIds,
+                  confirmedTankIds,
+                )
+              }
+              onScenarioChange={invalidateEmergencyRanking}
+              rankings={emergencyRankings}
+            />
+          ),
+          accessibility: (
+            <PointIsochronePanel
               error={isochroneError}
               isLoading={isochroneLoading}
-              onClear={exitIsochroneAnalysis}
-              onGenerate={(contours, confirmUnverifiedStatus) =>
-                void generateIsochrone(contours, confirmUnverifiedStatus)
+              onClear={exitPointAccessibility}
+              onGenerate={(contours) =>
+                void generateIsochrone(contours, false)
               }
               result={isochroneResult}
               selectedPoint={selectedWaterPoint}
@@ -2617,7 +3393,8 @@ function MapView() {
         }}
         onClose={{
           infrastructureDetails: closeInfrastructureCard,
-          isochrone: clearIsochroneAnalysis,
+          isochrone: exitEmergencyAccessibility,
+          accessibility: exitPointAccessibility,
         }}
       />
 
@@ -2631,6 +3408,8 @@ function MapView() {
           Unable to load taps for {selectedCamp?.name}.
         </div>
       )}
+
+      {isInitialDataLoading && <FullScreenDataLoader />}
 
       <div className="absolute bottom-3 left-3 z-10 flex items-center gap-2 text-[9px] text-slate-300 sm:bottom-4 sm:left-5 lg:left-6" role="status">
         <span className={`size-1.5 ${basemapError || catalogStatus === "error" ? "bg-rose-400" : "bg-emerald-400"}`} />
