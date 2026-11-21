@@ -5,7 +5,10 @@ const { Pool } = pg
 
 export const pool = new Pool({
   connectionString: env.databaseUrl,
-  ssl: { rejectUnauthorized: true },
+  ssl:
+    env.databaseSslMode === "disable"
+      ? false
+      : { rejectUnauthorized: env.databaseSslMode === "verify-full" },
   max: 10,
   connectionTimeoutMillis: 10_000,
 })

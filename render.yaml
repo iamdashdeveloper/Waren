@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: waren-api
+    runtime: node
+    rootDir: backend
+    buildCommand: pnpm install --frozen-lockfile && pnpm build
+    startCommand: pnpm start
+    healthCheckPath: /api/health/db
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_SSL_MODE
+        value: verify-full
+      - key: CORS_ORIGIN
+        sync: false
