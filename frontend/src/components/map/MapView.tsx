@@ -2180,6 +2180,7 @@ function MapView() {
       <div
         aria-label="Map of the Kakuma–Kalobeyei area"
         className={`absolute inset-0 ${activeCategories.includes("wells") || connectionView ? "" : "waren-wells-hidden"}`}
+        data-tour="map-canvas"
         ref={mapElement}
         role="application"
       />

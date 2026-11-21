@@ -1,4 +1,5 @@
 import { RiContrastDrop2Line } from "@remixicon/react"
+import GuidedTour from "@/components/layout/GuidedTour"
 import ThemeToggle from "@/components/layout/ThemeToggle"
 import { Select, type SelectOption } from "@/components/ui/select"
 import { useSpatialContext } from "@/components/map/spatial-context"
@@ -53,6 +54,7 @@ function Header() {
             <button
               aria-label={tab.label}
               aria-pressed={active}
+              data-tour={`tab-${tab.id}`}
               className={`relative h-8 shrink-0 px-1.5 text-[8px] font-semibold uppercase tracking-[0.06em] transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring sm:px-2.5 sm:text-[10px] sm:tracking-[0.08em] ${active ? "text-foreground after:absolute after:inset-x-1.5 after:-bottom-[7px] after:h-px after:bg-primary sm:after:inset-x-2.5" : "text-muted-foreground"}`}
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
@@ -66,13 +68,16 @@ function Header() {
       </nav>
 
       <div className="ml-auto flex min-w-0 items-center gap-1.5">
-        <Select
-          aria-label="Select camp context"
-          className="h-7 w-[min(25vw,160px)] min-w-[84px] px-1.5 text-[10px] sm:w-[170px]"
-          onValueChange={setSelectedCampId}
-          options={campOptions}
-          value={selectedCampId}
-        />
+        <GuidedTour />
+        <div data-tour="camp-selector">
+          <Select
+            aria-label="Select camp context"
+            className="h-7 w-[min(25vw,160px)] min-w-[84px] px-1.5 text-[10px] sm:w-[170px]"
+            onValueChange={setSelectedCampId}
+            options={campOptions}
+            value={selectedCampId}
+          />
+        </div>
         <ThemeToggle />
       </div>
     </header>

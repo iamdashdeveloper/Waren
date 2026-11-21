@@ -47,6 +47,85 @@
 	--sidebar-ring: oklch(0.723 0.014 214.4);
 }
 
+.driver-popover.waren-tour-popover {
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	background: var(--popover);
+	color: var(--popover-foreground);
+	font-family: "Oxanium Variable", sans-serif;
+}
+
+.driver-popover.waren-tour-popover .driver-popover-arrow {
+	border-color: var(--popover);
+}
+
+.driver-popover.waren-tour-popover .driver-popover-arrow-side-left {
+	border-top-color: transparent;
+	border-bottom-color: transparent;
+	border-right-color: transparent;
+}
+
+.driver-popover.waren-tour-popover .driver-popover-arrow-side-right {
+	border-top-color: transparent;
+	border-bottom-color: transparent;
+	border-left-color: transparent;
+}
+
+.driver-popover.waren-tour-popover .driver-popover-arrow-side-top {
+	border-bottom-color: transparent;
+	border-left-color: transparent;
+	border-right-color: transparent;
+}
+
+.driver-popover.waren-tour-popover .driver-popover-arrow-side-bottom {
+	border-top-color: transparent;
+	border-left-color: transparent;
+	border-right-color: transparent;
+}
+
+.waren-tour-popover .driver-popover-title {
+	padding-right: 1.5rem;
+	font-size: 15px;
+}
+
+.waren-tour-popover .driver-popover-description {
+	font-size: 12px;
+	line-height: 1.6;
+}
+
+.waren-tour-popover .driver-popover-close-btn {
+	color: var(--muted-foreground);
+}
+
+.waren-tour-popover .driver-popover-close-btn:hover,
+.waren-tour-popover .driver-popover-close-btn:focus-visible {
+	color: var(--foreground);
+}
+
+.waren-tour-popover .driver-popover-progress-text {
+	color: var(--muted-foreground);
+	font-size: 10px;
+}
+
+.waren-tour-popover .driver-popover-footer-btn {
+	border-color: var(--border);
+	border-radius: var(--radius);
+	background: var(--background);
+	color: var(--foreground);
+	font-family: inherit;
+}
+
+.waren-tour-popover .driver-popover-next-btn {
+	border-color: var(--primary);
+	background: var(--primary);
+	color: var(--primary-foreground);
+}
+
+.waren-tour-popover .driver-popover-footer-btn:hover,
+.waren-tour-popover .driver-popover-footer-btn:focus-visible {
+	background: var(--muted);
+}
+
 .light {
 	color-scheme: light;
 }

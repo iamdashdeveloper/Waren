@@ -24,7 +24,12 @@ function InfrastructureDetailsCard({
   connectionViewError,
 }: InfrastructureDetailsCardProps) {
   return (
-    <div aria-label={`${item.type} details`} className="space-y-3" role="group">
+    <div
+      aria-label={`${item.type} details`}
+      className="space-y-3"
+      data-tour={`${item.type.toLowerCase()}-details`}
+      role="group"
+    >
       <p className="truncate text-[10px] text-muted-foreground">{item.id}</p>
         <dl className="grid grid-cols-[minmax(94px,0.7fr)_minmax(0,1.3fr)] gap-x-4 gap-y-2 border-t border-white/10 pt-3 text-[10px]">
           {item.fields.map(({ label, value }) => (
@@ -39,6 +44,7 @@ function InfrastructureDetailsCard({
         <div className="mt-4 border-t border-white/10 pt-3">
           <Button
             className="w-full"
+            data-tour={`${item.type.toLowerCase()}-connections`}
             data-ui-sound="off"
             disabled={isConnectionViewLoading}
             onClick={onToggleConnectionView}

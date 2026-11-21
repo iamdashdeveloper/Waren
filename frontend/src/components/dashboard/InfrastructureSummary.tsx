@@ -106,6 +106,7 @@ function InfrastructureSummary({
           <Button
             aria-pressed={activeMode === "tankServiceAreas"}
             className={`h-auto min-h-[58px] w-full justify-start gap-2 p-2 text-left hover:bg-muted/60 sm:min-h-[64px] sm:gap-2.5 sm:p-2.5 ${activeMode === "tankServiceAreas" ? "bg-muted/70 ring-1 ring-inset ring-primary/40" : ""}`}
+            data-tour="service-areas-control"
             onClick={onToggleTankServiceAreas}
             title="Show tank service areas"
             variant="ghost"
