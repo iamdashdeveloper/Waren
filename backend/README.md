@@ -26,6 +26,10 @@ In production, set `NODE_ENV=production` and `CORS_ORIGIN` to the exact HTTPS or
 - `GET /api/data/spatial-layers` — accessible PostGIS spatial columns with geometry type and SRID metadata
 - `GET /api/data/:table/geojson?schema=public&geometryColumn=geom` — a validated PostGIS GeoJSON FeatureCollection
 - `GET /api/data/:table?schema=public&limit=100&offset=0` — fetch a page of rows from an existing table
+- `POST /api/analysis/isochrone` — generate a walking isochrone for an existing tap record
+- `GET /api/analysis/water-points/metadata` — discover the tap identifier, block, and operational-status columns
+
+Isochrone requests use the OpenRouteService `foot-walking` profile. Configure `ORS_API_KEY` on the backend only; never expose it as a frontend `VITE_*` variable. The provider has not been verified against production study-area coordinates until a valid provider key and deploy are available.
 
 Table identifiers are checked against PostgreSQL metadata before use. The row endpoint only supports retrieval and does not modify the database. Geometry columns are selected as stored; no schema or spatial processing is performed.
 
@@ -39,5 +43,6 @@ Configure these Render service variables:
 - `NODE_ENV=production`
 - `CORS_ORIGIN=https://<your-vercel-domain>` — exact deployed frontend origin, without `/api` or a trailing slash; or `*` to allow any origin for a public, unauthenticated API.
 - `DATABASE_SSL_MODE=verify-full` — use `require` only if TLS certificate verification cannot be used.
+- `ORS_API_KEY` — OpenRouteService key for the emergency walking isochrone endpoint.
 
 Render supplies `PORT`; the server binds to `0.0.0.0` by default. Provision and populate the Neon PostGIS database before deploying the API. After deployment, verify `https://<your-render-domain>/api/health` and `/api/health/db`.

@@ -35,6 +35,8 @@ import MapLegend from "@/components/map/MapLegend"
 import TankServiceAreasPanel, {
   type SelectedServiceArea,
 } from "@/components/map/TankServiceAreasPanel"
+import EmergencyWaterAccessibilityPanel from "@/components/map/EmergencyWaterAccessibilityPanel"
+import { contourColors } from "@/components/map/isochrone-styles"
 import WaterBalancePanel from "@/components/map/WaterBalancePanel"
 import PaneManager from "@/components/workspace/PaneManager"
 import { useWorkspace } from "@/components/workspace/workspace-context"
@@ -56,7 +58,12 @@ import {
   getSpatialLayerGeoJSON,
   getSpatialLayers,
   getSupplyRelationships,
+  getEmergencyWaterPointSchema,
+  generateEmergencyWaterIsochrone,
+  type EmergencyWaterPointSchema,
   type CampContext,
+  type EmergencyWaterIsochrone,
+  type EmergencyWaterPoint,
   type SpatialFeatureCollection,
   type SpatialLayerMetadata,
   type SupplyRelationshipColumns,
@@ -78,6 +85,27 @@ const waterBalanceColors: Record<WaterBalanceStatus, string> = {
   deficient: "#ef4444",
   unknown: "#94a3b8",
 }
+const waterPointIdAliases = new Set([
+  "id",
+  "tapid",
+  "tapno",
+  "waterpointid",
+  "wpid",
+])
+const waterPointBlockAliases = new Set([
+  "block",
+  "blockid",
+  "blockname",
+  "blockno",
+  "area",
+  "zone",
+])
+const waterPointStatusAliases = new Set([
+  "operationalstatus",
+  "isoperational",
+  "functionalitystatus",
+  "status",
+])
 type ConnectionFeatureType = "boreholes" | "tanks"
 type SupplyConnection = {
   boreholeId: string
@@ -124,6 +152,35 @@ function normalizedId(value: unknown): string | null {
   if (value === null || value === undefined) return null
   const id = String(value).trim()
   return id.length > 0 ? id : null
+}
+
+function waterPointProperties(
+  feature: FeatureLike,
+  schema: EmergencyWaterPointSchema | null,
+): EmergencyWaterPoint {
+  const properties = feature.getProperties()
+  const entries = Object.entries(properties).filter(([key]) => key !== "geometry")
+  const normalized = (name: string) => name.toLowerCase().replace(/[^a-z0-9]/g, "")
+  const propertyValue = (aliases: Set<string>) =>
+    entries.find(([key]) => aliases.has(normalized(key)))?.[1]
+  return {
+    id:
+      normalizedId(
+        schema ? feature.get(schema.identifierColumn) : undefined,
+      ) ??
+      normalizedId(propertyValue(waterPointIdAliases)) ??
+      "",
+    block: normalizedId(
+      schema?.blockColumn
+        ? feature.get(schema.blockColumn)
+        : propertyValue(waterPointBlockAliases),
+    ),
+    operationalStatus: normalizedId(
+      schema?.operationalStatusColumn
+        ? feature.get(schema.operationalStatusColumn)
+        : propertyValue(waterPointStatusAliases),
+    ),
+  }
 }
 
 function featureIdentifier(
@@ -616,6 +673,7 @@ function MapView() {
     toggleCategory,
     openPane,
     closePane,
+    isPaneOpen,
     registerToolAction,
     setToolUiState,
     mapMode,
@@ -634,10 +692,14 @@ function MapView() {
   const mapElement = useRef<HTMLDivElement>(null)
   const mapInstance = useRef<OLMap | null>(null)
   const mapModeRef = useRef(mapMode)
+  const isochroneActiveRef = useRef(false)
   const didFitInitialExtentRef = useRef(false)
   const mapLayersRef = useRef<Record<string, VectorLayer>>({})
   const connectionLayerRef = useRef<VectorLayer | null>(null)
   const serviceAreaLayerRef = useRef<VectorLayer | null>(null)
+  const isochroneLayerRef = useRef<VectorLayer | null>(null)
+  const isochroneRequestRef = useRef<AbortController | null>(null)
+  const isochroneRequestIdRef = useRef(0)
   const selectedBoreholePulseRef = useRef<Overlay | null>(null)
   const hoveredConnectionRef = useRef<Feature | null>(null)
   const hoveredServiceAreaRef = useRef<Feature | null>(null)
@@ -663,6 +725,7 @@ function MapView() {
     useRef<Awaited<ReturnType<typeof getSupplyRelationships>> | null>(null)
   const tapsOverviewSourceRef = useRef<VectorSource | null>(null)
   const selectedCampRef = useRef(selectedCamp)
+  const waterPointSchemaRef = useRef<EmergencyWaterPointSchema | null>(null)
   const [layers, setLayers] = useState<MapLayer[]>([])
   const [layerStatuses, setLayerStatuses] = useState<Record<string, LayerStatus>>({})
   const [metrics, setMetrics] = useState<InfrastructureMetrics | null>(null)
@@ -676,6 +739,12 @@ function MapView() {
     useState<SelectedServiceArea | null>(null)
   const [connectionView, setConnectionView] =
     useState<ConnectionViewState | null>(null)
+  const [selectedWaterPoint, setSelectedWaterPoint] =
+    useState<EmergencyWaterPoint | null>(null)
+  const [isochroneResult, setIsochroneResult] =
+    useState<EmergencyWaterIsochrone | null>(null)
+  const [isochroneLoading, setIsochroneLoading] = useState(false)
+  const [isochroneError, setIsochroneError] = useState<string | null>(null)
   const [isConnectionSoundPending, setIsConnectionSoundPending] =
     useState(false)
   const [basemapError, setBasemapError] = useState(false)
@@ -685,6 +754,19 @@ function MapView() {
     { feature: FeatureLike; table: string; label: string }[]
   >([])
   const [basemapStyle, setBasemapStyle] = useState<"dark" | "light">("dark")
+
+  useEffect(() => {
+    const controller = new AbortController()
+    void getEmergencyWaterPointSchema(controller.signal)
+      .then((schema) => {
+        waterPointSchemaRef.current = schema
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return
+        console.error("Unable to discover the tap identifier column.", error)
+      })
+    return () => controller.abort()
+  }, [])
   const waterBalanceAreaCount = useMemo(
     () =>
       [...tankServiceAreas.byServiceCode.values()].filter((groups) =>
@@ -703,6 +785,7 @@ function MapView() {
     [waterBalances.byTankId],
   )
   const activeMapToolRef = useRef(activeMapTool)
+  const isEmergencyAnalysisOpen = isPaneOpen("isochrone")
   const closeInfrastructureCard = useCallback(() => {
     cancelConnectionSoundRef.current?.()
     cancelConnectionSoundRef.current = null
@@ -719,6 +802,102 @@ function MapView() {
       selectedBoreholePulseRef.current = null
     }
   }, [closePane])
+
+  const clearIsochroneAnalysis = useCallback(() => {
+    isochroneRequestIdRef.current += 1
+    isochroneRequestRef.current?.abort()
+    isochroneRequestRef.current = null
+    isochroneLayerRef.current?.getSource()?.clear(true)
+    selectionSourceRef.current?.clear(true)
+    selectionExtentRef.current = null
+    setSelectedWaterPoint(null)
+    setIsochroneResult(null)
+    setIsochroneError(null)
+    setIsochroneLoading(false)
+    setToolUiState("zoomToSelection", { active: false, disabled: true })
+    setToolUiState("clearSelection", { active: false, disabled: true })
+  }, [setToolUiState])
+
+  const exitIsochroneAnalysis = useCallback(() => {
+    clearIsochroneAnalysis()
+    closePane("isochrone")
+  }, [clearIsochroneAnalysis, closePane])
+
+  const generateIsochrone = useCallback(
+    async (contours: number[], confirmUnverifiedStatus: boolean) => {
+      if (!selectedWaterPoint?.id) {
+        setIsochroneError("Select a water point with a valid dataset identifier first.")
+        return
+      }
+
+      isochroneRequestRef.current?.abort()
+      const controller = new AbortController()
+      isochroneRequestRef.current = controller
+      const requestId = ++isochroneRequestIdRef.current
+      setIsochroneLoading(true)
+      setIsochroneError(null)
+      setIsochroneResult(null)
+      isochroneLayerRef.current?.getSource()?.clear(true)
+
+      try {
+        const response = await generateEmergencyWaterIsochrone(
+          selectedWaterPoint.id,
+          contours,
+          confirmUnverifiedStatus,
+          controller.signal,
+        )
+        if (
+          controller.signal.aborted ||
+          requestId !== isochroneRequestIdRef.current
+        ) {
+          return
+        }
+        if (!isFeatureCollection(response)) {
+          throw new Error("The isochrone endpoint did not return valid GeoJSON.")
+        }
+        const features = geoJSONFormat.readFeatures(response, {
+          dataProjection: "EPSG:4326",
+          featureProjection: "EPSG:3857",
+        })
+        features.sort(
+          (left, right) =>
+            Number(right.get("contourSeconds")) -
+            Number(left.get("contourSeconds")),
+        )
+        const source = isochroneLayerRef.current?.getSource()
+        if (!source) {
+          throw new Error("The isochrone map layer is unavailable.")
+        }
+        source.clear(true)
+        source.addFeatures(features)
+        setSelectedWaterPoint(response.waterPoint)
+        setIsochroneResult(response)
+      } catch (error) {
+        if (
+          controller.signal.aborted ||
+          requestId !== isochroneRequestIdRef.current
+        ) {
+          return
+        }
+        setIsochroneError(
+          error instanceof Error
+            ? error.message
+            : "Unable to generate the walking isochrone.",
+        )
+      } finally {
+        if (requestId === isochroneRequestIdRef.current) {
+          setIsochroneLoading(false)
+          isochroneRequestRef.current = null
+        }
+      }
+    },
+    [selectedWaterPoint],
+  )
+
+  useEffect(() => {
+    isochroneActiveRef.current = isEmergencyAnalysisOpen
+    if (!isochroneActiveRef.current) clearIsochroneAnalysis()
+  }, [clearIsochroneAnalysis, isEmergencyAnalysisOpen])
 
   function serviceAreaStyle(feature: FeatureLike, hovered: boolean) {
     const color = String(feature.get("serviceColor") ?? "#38bdf8")
@@ -875,6 +1054,22 @@ function MapView() {
     map.addLayer(serviceAreaLayer)
     serviceAreaLayer.set("table", "tank_service_areas")
     serviceAreaLayerRef.current = serviceAreaLayer
+    const isochroneLayer = new VectorLayer({
+      source: new VectorSource(),
+      style: (feature) => {
+        const seconds = Number(feature.get("contourSeconds"))
+        const minutes = Math.round(seconds / 60)
+        const color = contourColors[minutes]
+        if (!color) return undefined
+        return new Style({
+          fill: new Fill({ color: withOpacity(color, 0.22) }),
+          stroke: new Stroke({ color, width: 2, lineDash: [7, 4] }),
+        })
+      },
+      zIndex: 35,
+    })
+    map.addLayer(isochroneLayer)
+    isochroneLayerRef.current = isochroneLayer
     const selectionSource = new VectorSource()
     const selectionLayer = new VectorLayer({
       source: selectionSource,
@@ -912,6 +1107,62 @@ function MapView() {
     map.addLayer(measurementLayer)
     measurementSourceRef.current = measurementSource
     const handleSingleClick = (event: { pixel: number[]; coordinate: number[] }) => {
+      if (isochroneActiveRef.current) {
+        const selectedTap: { value: FeatureLike | null } = { value: null }
+        map.forEachFeatureAtPixel(
+          event.pixel,
+          (feature, layer) => {
+            if (
+              String(layer?.get("table")).toLowerCase() !== "taps"
+            ) {
+              return undefined
+            }
+            selectedTap.value = feature
+            return feature
+          },
+          {
+            layerFilter: (layer) =>
+              String(layer.get("table")).toLowerCase() === "taps",
+            hitTolerance: 12,
+          },
+        )
+        if (!selectedTap.value) {
+          setIsochroneError("Click an existing tap marker to select a water point.")
+          return
+        }
+
+        const waterPoint = waterPointProperties(
+          selectedTap.value,
+          waterPointSchemaRef.current,
+        )
+        isochroneRequestIdRef.current += 1
+        isochroneRequestRef.current?.abort()
+        isochroneRequestRef.current = null
+        isochroneLayerRef.current?.getSource()?.clear(true)
+        setIsochroneLoading(false)
+        setIsochroneResult(null)
+        setIsochroneError(
+          waterPoint.id
+            ? null
+            : "This tap has no supported identifier in its dataset record.",
+        )
+        setSelectedWaterPoint(waterPoint)
+        setSelectedServiceArea(null)
+        setSelectedInfrastructure(null)
+        closePane("infrastructureDetails")
+        selectionSourceRef.current?.clear(true)
+        if (selectedTap.value instanceof Feature) {
+          const selectedGeometry = selectedTap.value.getGeometry()
+          const highlight = selectedTap.value.clone()
+          selectionSourceRef.current?.addFeature(highlight)
+          selectionExtentRef.current =
+            selectedGeometry?.getExtent() ?? null
+          setToolUiState("zoomToSelection", { active: false, disabled: false })
+          setToolUiState("clearSelection", { active: false, disabled: false })
+        }
+        return
+      }
+
       const mapTool = activeMapToolRef.current
       if (mapTool === "pan" || mapTool === "rectangle" || mapTool === "polygon" ||
           mapTool === "measureDistance" || mapTool === "measureArea") {
@@ -1254,6 +1505,9 @@ function MapView() {
       map.un("pointermove", handlePointerMove)
       connectionRequestRef.current?.abort()
       connectionRequestRef.current = null
+      isochroneRequestRef.current?.abort()
+      isochroneRequestRef.current = null
+      isochroneLayerRef.current = null
       cancelConnectionSoundRef.current?.()
       cancelConnectionSoundRef.current = null
       map.setTarget(undefined)
@@ -2235,6 +2489,18 @@ function MapView() {
               tankCount={waterBalanceTankCount}
             />
           ),
+          isochrone: (
+            <EmergencyWaterAccessibilityPanel
+              error={isochroneError}
+              isLoading={isochroneLoading}
+              onClear={exitIsochroneAnalysis}
+              onGenerate={(contours, confirmUnverifiedStatus) =>
+                void generateIsochrone(contours, confirmUnverifiedStatus)
+              }
+              result={isochroneResult}
+              selectedPoint={selectedWaterPoint}
+            />
+          ),
           legend: (
             <MapLegend />
           ),
@@ -2349,7 +2615,10 @@ function MapView() {
             />
           ) : undefined,
         }}
-        onClose={{ infrastructureDetails: closeInfrastructureCard }}
+        onClose={{
+          infrastructureDetails: closeInfrastructureCard,
+          isochrone: clearIsochroneAnalysis,
+        }}
       />
 
       {displayedTapStatus === "empty" && (

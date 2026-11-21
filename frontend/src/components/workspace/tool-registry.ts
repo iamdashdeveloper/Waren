@@ -79,11 +79,11 @@ export type ToolId =
   | "populationProjection"
   | "demandCalculator"
   | "waterBalance"
+  | "isochrone"
   | "supplyDemand"
   | "deficiency"
   | "supplyByPlanningUnit"
   | "accessibility"
-  | "isochrone"
   | "walkingDistance"
   | "accessibilityThresholds"
   | "hydraulics"
@@ -185,7 +185,13 @@ export const toolRegistry: ToolDefinition[] = [
     ["deficiency", "Deficiency", "Water Balance", RiFocus3Line, "small"],
     ["supplyByPlanningUnit", "Supply by Planning Unit", "Water Balance", RiMapPin2Line, "small"],
     ["accessibility", "Accessibility", "Accessibility", RiMapPin2Line, "medium"],
-    ["isochrone", "Isochrone", "Accessibility", RiFocus3Line, "small"],
+    [
+      "isochrone",
+      "Emergency Water Accessibility Analysis",
+      "Accessibility",
+      RiFocus3Line,
+      "medium",
+    ],
     ["walkingDistance", "Walking Distance", "Accessibility", RiMap2Line, "small"],
     ["accessibilityThresholds", "Thresholds", "Accessibility", RiShapeLine, "small"],
     ["hydraulics", "Hydraulics", "Hydraulics", RiWaterFlashLine, "small"],
@@ -196,12 +202,16 @@ export const toolRegistry: ToolDefinition[] = [
     description:
       id === "waterBalance"
         ? "Color service areas by tank water balance."
+        : id === "isochrone"
+          ? "Select an operational tap and map the areas within walking-time contours."
         : `${label} analysis is not available yet.`,
     tab: "analysis",
     group,
     icon,
     size,
-    ...(id === "waterBalance" ? { paneRegion: "bottomRight" as const } : { comingSoon: true }),
+    ...(id === "waterBalance" || id === "isochrone"
+      ? { paneRegion: "bottomRight" as const }
+      : { comingSoon: true }),
   })),
 
   {

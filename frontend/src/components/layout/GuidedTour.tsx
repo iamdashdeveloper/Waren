@@ -17,6 +17,10 @@ function GuidedTour() {
     openPane,
     closePane,
     togglePane,
+    setActiveMapTool,
+    activeCategories,
+    availableCategories,
+    toggleCategory,
   } = useWorkspace()
 
   useEffect(
@@ -220,6 +224,99 @@ function GuidedTour() {
           title: "Compare supply and need ✅",
           description:
             "The map colors and legend help you spot areas with excess, balanced, or deficient water supply. That’s your WAREN tour—happy exploring!",
+          side: "left" as const,
+        },
+      },
+      {
+        element: '[data-tour="emergency-water-tool"]',
+        popover: {
+          title: "Plan for water-point outages 🚰",
+          description:
+            "Find Emergency Water Accessibility Analysis in the Analysis tab. It maps walking-time areas around a working tap so you can explore alternatives when a nearby tap is dry.",
+          side: "bottom" as const,
+          onNextClick: (_element, _step, { driver: activeDriver }) => {
+            setActiveTab("analysis")
+            setActiveMapTool("explore")
+            if (
+              availableCategories.includes("taps") &&
+              !activeCategories.includes("taps")
+            ) {
+              toggleCategory("taps")
+            }
+            if (
+              !document.querySelector(
+                '[aria-label="Emergency Water Accessibility Analysis pane"]',
+              )
+            ) {
+              togglePane("isochrone")
+            }
+            activeDriver.moveNext()
+          },
+        },
+      },
+      {
+        element: '[aria-label="Emergency Water Accessibility Analysis pane"]',
+        waitForElement: 2000,
+        popover: {
+          title: "Choose an existing tap 📍",
+          description:
+            "Click a tap marker on the map. The selected tap’s dataset ID, block, and recorded status appear here. If status is not recorded, verify the tap is working before relying on the result.",
+          side: "left" as const,
+        },
+      },
+      {
+        element: '[data-tour="map-canvas"]',
+        popover: {
+          title: "Select the water point",
+          description:
+            "Click an existing tap marker to use its real WAREN record and coordinates. Once it appears in the panel, choose Next.",
+          side: "top" as const,
+          onNextClick: advanceWhen(
+            () =>
+              Boolean(
+                document
+                  .querySelector('[data-tour="selected-water-point"]')
+                  ?.textContent?.includes("ID:"),
+              ),
+            "Select an existing tap marker on the map first, then choose Next.",
+          ),
+        },
+        allowPageInteraction: true,
+        disableActiveInteraction: false,
+      },
+      {
+        element: '[data-tour="isochrone-contours"]',
+        popover: {
+          title: "Set walking times ⏱️",
+          description:
+            "Choose one or more travel-time bands. The defaults are 5, 10, and 15 minutes; the API receives those thresholds in seconds.",
+          side: "left" as const,
+        },
+      },
+      {
+        element: '[data-tour="generate-isochrone"]',
+        popover: {
+          title: "Generate the walking area 🗺️",
+          description:
+            "Generate requests pedestrian-network polygons from OpenRouteService. Wait for a result or an error before choosing Next.",
+          side: "top" as const,
+          onNextClick: advanceWhen(
+            () =>
+              Boolean(
+                document.querySelector('[data-tour="isochrone-result"]'),
+              ),
+            "Generate the isochrone and wait for the result or error message before continuing.",
+          ),
+        },
+        allowPageInteraction: true,
+        disableActiveInteraction: false,
+      },
+      {
+        element: '[data-tour="isochrone-legend"]',
+        popover: {
+          title: "Read the contours—and plan alternatives 🌱",
+          description:
+            "Each colored polygon is an estimated area reachable on foot within its time band, following mapped paths rather than a circle. During a shortage, compare candidate working taps to explore alternatives. Check local status: an isochrone does not prove a tap has water, capacity, or that every path is passable.",
           side: "left" as const,
         },
       },

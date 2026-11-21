@@ -16,8 +16,9 @@ WAREN is a water infrastructure mapping application for Kakuma and Kalobeyei. Th
 1. Create a Render Blueprint from this repository, or create a Web Service with the repository root and use [render.yaml](./render.yaml). The Blueprint sets the API root directory to `backend`, builds and starts the service, and checks `/api/health/db`.
 2. Set the Blueprint's `DATABASE_URL` to the Neon connection string.
 3. Set `CORS_ORIGIN` to the exact HTTPS origin of the Vercel production frontend, with no path or trailing slash. For this public, unauthenticated school-project API, you can instead set `CORS_ORIGIN=*` to allow browser requests from any origin. This does not add authentication or make the database URL public, but any website can call the public API.
-4. Render provides `PORT`; the API listens on it and binds to `0.0.0.0`.
-5. After deploy, verify `https://<your-render-domain>/api/health` and `/api/health/db`.
+4. Set `ORS_API_KEY` to your OpenRouteService API key in Render's backend environment variables. Keep it server-side; never set it in Vercel.
+5. Render provides `PORT`; the API listens on it and binds to `0.0.0.0`.
+6. After deploy, verify `https://<your-render-domain>/api/health` and `/api/health/db`.
 
 The database URL is a server-only secret: configure it in Render, never in the frontend or a `VITE_*` variable. Enable Neon backups and verify a recovery procedure before production use.
 
@@ -25,7 +26,7 @@ The database URL is a server-only secret: configure it in Render, never in the f
 
 1. Import the repository into Vercel and set the **Root Directory** to `frontend`.
 2. Vercel reads [frontend/vercel.json](./frontend/vercel.json) for the Vite build, static output, SPA route fallback, and baseline security headers.
-3. Add the build-time environment variable `VITE_API_BASE_URL=https://<your-render-domain>/api`.
+3. Add the build-time environment variable `VITE_API_BASE_URL=https://<your-render-domain>/api`. The frontend also appends `/api` automatically if you enter only the Render service origin.
 4. Open `/dashboard` directly on the deployed frontend, then confirm the camp list, map layers, and infrastructure data load. Check the browser network console and API health endpoints if a request fails.
 
 Vite embeds `VITE_*` values into public frontend assets. Only the API's public URL belongs there—never database credentials or other secrets. If not using `*`, Vercel preview deployments use different origins; add specific preview origins to Render's `CORS_ORIGIN` only if previews need API access.

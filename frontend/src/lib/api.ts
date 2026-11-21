@@ -66,17 +66,94 @@ export type TankWaterBalance = {
   demand: number | null
 }
 
-const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || "/api").replace(/\/$/, "")
+export type EmergencyWaterPoint = {
+  id: string
+  block: string | null
+  operationalStatus: string | null
+}
+
+export type EmergencyWaterIsochrone = {
+  type: "FeatureCollection"
+  features: {
+    type: "Feature"
+    geometry: {
+      type: "Polygon" | "MultiPolygon"
+      coordinates: unknown[]
+    }
+    properties: Record<string, unknown> & { contourSeconds: number }
+  }[]
+  waterPoint: EmergencyWaterPoint
+  profile: "foot-walking"
+  contours: number[]
+}
+
+export type EmergencyWaterPointSchema = {
+  identifierColumn: string
+  blockColumn: string | null
+  operationalStatusColumn: string | null
+}
+
+const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim().replace(/\/+$/, "")
+const apiBaseUrl =
+  !configuredApiBaseUrl
+    ? "/api"
+    : /\/api$/i.test(configuredApiBaseUrl)
+      ? configuredApiBaseUrl
+      : `${configuredApiBaseUrl}/api`
 
 async function request<T>(
   path: string,
   signal?: AbortSignal,
+  init?: RequestInit,
 ): Promise<T> {
-  const response = await fetch(`${apiBaseUrl}${path}`, { signal })
+  const response = await fetch(`${apiBaseUrl}${path}`, { ...init, signal })
   if (!response.ok) {
-    throw new Error(`WAREN API request failed with status ${response.status}.`)
+    let message = `WAREN API request failed with status ${response.status}.`
+    try {
+      const body: unknown = await response.json()
+      if (
+        typeof body === "object" &&
+        body !== null &&
+        "message" in body &&
+        typeof body.message === "string"
+      ) {
+        message = body.message
+      }
+    } catch {
+      message = `WAREN API request failed with status ${response.status}.`
+    }
+    throw new Error(message)
   }
   return (await response.json()) as T
+}
+
+export function generateEmergencyWaterIsochrone(
+  waterPointId: string,
+  contours: number[],
+  confirmUnverifiedStatus: boolean,
+  signal?: AbortSignal,
+) {
+  return request<EmergencyWaterIsochrone>(
+    "/analysis/isochrone",
+    signal,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        waterPointId,
+        contours,
+        profile: "foot-walking",
+        confirmUnverifiedStatus,
+      }),
+    },
+  )
+}
+
+export function getEmergencyWaterPointSchema(signal?: AbortSignal) {
+  return request<EmergencyWaterPointSchema>(
+    "/analysis/water-points/metadata",
+    signal,
+  )
 }
 
 export function getApiHealth(signal?: AbortSignal) {

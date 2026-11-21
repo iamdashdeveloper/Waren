@@ -95,6 +95,7 @@ if (!isDatabaseSslMode(databaseSslModeValue)) {
 export const env = {
   databaseUrl,
   databaseSslMode: databaseSslModeValue,
+  openRouteServiceApiKey: process.env.ORS_API_KEY?.trim() || null,
   port: readInteger("PORT", 3000),
   host: process.env.HOST?.trim() || "0.0.0.0",
   nodeEnv,
