@@ -1,0 +1,2133 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              34.7366214273707,
+              3.7751106684064
+            ],
+            [
+              34.7378684275541,
+              3.77438663190646
+            ],
+            [
+              34.7367962789348,
+              3.77252332259709
+            ],
+            [
+              34.7355492791041,
+              3.7732473567617
+            ],
+            [
+              34.7366214273707,
+              3.7751106684064
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "fid": 1,
+        "Join_Count": 83,
+        "RefName": "13",
+        "Text": "13",
+        "Distance": 0,
+        "latitude": 3.773115012,
+        "longitude": 34.73613795,
+        "altitude": 605,
+        "Plot_Statu": "Developed",
+        "Land_Use": "Residential",
+        "Village": "Kv1",
+        "Neighborho": "N13",
+        "Compound": "C1",
+        "Shelter_Nu": "H1",
+        "Shelter_Co": "Kv1N13C1H1",
+        "Shelter_Re": "Kv1N13C1H1",
+        "Shelter_na": "T-Shelter",
+        "Shelter_ta": "Shelter is Tagged",
+        "precision_": 5,
+        "Unhcr_Shel": 1,
+        "Shel_Neig": 83,
+        "Shape__Area": 38496.55236816406,
+        "Shape__Length": 800.6114696243724
+      },
+      "id": 1
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              34.7276949152526,
+              3.76972099490728
+            ],
+            [
+              34.7287670443563,
+              3.77158432525581
+            ],
+            [
+              34.7300140516398,
+              3.7708602993292
+            ],
+            [
+              34.7289419230788,
+              3.76899697130908
+            ],
+            [
+              34.7276949152526,
+              3.76972099490728
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "fid": 2,
+        "Join_Count": 78,
+        "RefName": "1",
+        "Text": "1",
+        "Distance": 0,
+        "latitude": 3.770073531,
+        "longitude": 34.72849094,
+        "altitude": 603,
+        "Plot_Statu": "Developed",
+        "Land_Use": "Residential",
+        "Village": "Kv1",
+        "Neighborho": "N1",
+        "Compound": "C2",
+        "Shelter_Nu": "H1",
+        "Shelter_Co": "Kv1N1C2H1",
+        "Shelter_Re": "Kv1N1C2H1",
+        "Shelter_na": "Permanent",
+        "Shelter_ta": "Shelter is Tagged",
+        "precision_": 4,
+        "Unhcr_Shel": 1,
+        "Shel_Neig": 78,
+        "Shape__Area": 38496.54345703125,
+        "Shape__Length": 800.6113891534344
+      },
+      "id": 2
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              34.7288571392084,
+              3.77174090811696
+            ],
+            [
+              34.72992927368,
+              3.77360423556359
+            ],
+            [
+              34.7311762822513,
+              3.77288020710772
+            ],
+            [
+              34.7301041474222,
+              3.77101688199269
+            ],
+            [
+              34.7288571392084,
+              3.77174090811696
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "fid": 3,
+        "Join_Count": 89,
+        "RefName": "2",
+        "Text": "2",
+        "Distance": 0,
+        "latitude": 3.771580773,
+        "longitude": 34.72966121,
+        "altitude": 600,
+        "Plot_Statu": "Developed",
+        "Land_Use": "Residential",
+        "Village": "Kv1",
+        "Neighborho": "N2",
+        "Compound": "C8",
+        "Shelter_Nu": "H1",
+        "Shelter_Co": "Kv1N2C8H1",
+        "Shelter_Re": "Kv1N2C8H1",
+        "Shelter_na": "Permanent",
+        "Shelter_ta": "Shelter is Tagged",
+        "precision_": 4,
+        "Unhcr_Shel": 1,
+        "Shel_Neig": 89,
+        "Shape__Area": 38496.69348144531,
+        "Shape__Length": 800.6129437751905
+      },
+      "id": 3
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              34.7335007620638,
+              3.77692000846142
+            ],
+            [
+              34.7324286146915,
+              3.77505669097221
+            ],
+            [
+              34.7311816057026,
+              3.77578072215309
+            ],
+            [
+              34.7322537527174,
+              3.7776440419766
+            ],
+            [
+              34.7335007620638,
+              3.77692000846142
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "fid": 4,
+        "Join_Count": 94,
+        "RefName": "3",
+        "Text": "3",
+        "Distance": 0,
+        "latitude": 3.775708666,
+        "longitude": 34.7316191,
+        "altitude": 606,
+        "Plot_Statu": "Developed",
+        "Land_Use": "Residential",
+        "Village": "Kv1",
+        "Neighborho": "N3",
+        "Compound": "C1",
+        "Shelter_Nu": "H2",
+        "Shelter_Co": "Kv1N3C1H2",
+        "Shelter_Re": "Kv1N3C1H2",
+        "Shelter_na": "Permanent",
+        "Shelter_ta": "No Tagged",
+        "precision_": 5,
+        "Unhcr_Shel": 1,
+        "Shel_Neig": 94,
+        "Shape__Area": 38496.95227050781,
+        "Shape__Length": 800.6156306403021
+      },
+      "id": 4
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              34.7349044557069,
+              3.776103740045
+            ],
+            [
+              34.7338323079366,
+              3.77424042518297
+            ],
+            [
+              34.7325853018932,
+              3.77496445732281
+            ],
+            [
+              34.7336574493075,
+              3.77682777451946
+            ],
+            [
+              34.7349044557069,
+              3.776103740045
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "fid": 5,
+        "Join_Count": 41,
+        "RefName": "4",
+        "Text": "4",
+        "Distance": 0,
+        "latitude": 3.77485937,
+        "longitude": 34.73308518,
+        "altitude": 594,
+        "Plot_Statu": "Developed",
+        "Land_Use": "Residential",
+        "Village": "Kv1",
+        "Neighborho": "N4",
+        "Compound": "C1",
+        "Shelter_Nu": "H1",
+        "Shelter_Co": "Kv1N4C1H1",
+        "Shelter_Re": "Kv1N4C1H1",
+        "Shelter_na": "Permanent",
+        "Shelter_ta": "Shelter is Tagged",
+        "precision_": 5,
+        "Unhcr_Shel": 1,
+        "Shel_Neig": 41,
+        "Shape__Area": 38496.82385253906,
+        "Shape__Length": 800.6142918028387
+      },
+      "id": 5
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              34.7314228814222,
+              3.77294468472874
+            ],
+            [
+              34.7324950225613,
+              3.7748080048357
+            ],
+            [
+              34.7337420285753,
+              3.77408397289211
+            ],
+            [
+              34.7326698870801,
+              3.7722206551184
+            ],
+            [
+              34.7314228814222,
+              3.77294468472874
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "fid": 6,
+        "Join_Count": 76,
+        "RefName": "5",
+        "Text": "5",
+        "Distance": 0,
+        "latitude": 3.774426403,
+        "longitude": 34.73248478,
+        "altitude": 595,
+        "Plot_Statu": "Developed",
+        "Land_Use": "Residential",
+        "Village": "Kv1",
+        "Neighborho": "N5",
+        "Compound": "C4",
+        "Shelter_Nu": "H5",
+        "Shelter_Co": "Kv1N5C4H5",
+        "Shelter_Re": "Kv1N5C4H5",
+        "Shelter_na": "Permanent",
+        "Shelter_ta": "Shelter is Tagged",
+        "precision_": 5,
+        "Unhcr_Shel": 1,
+        "Shel_Neig": 76,
+        "Shape__Area": 38496.68017578125,
+        "Shape__Length": 800.6127738670673
+      },
+      "id": 6
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              34.7302604924146,
+              3.77092547120106
+            ],
+            [
+              34.731332627287,
+              3.77278879602412
+            ],
+            [
+              34.732579632916,
+              3.77206476660953
+            ],
+            [
+              34.7315074976876,
+              3.77020144411838
+            ],
+            [
+              34.7302604924146,
+              3.77092547120106
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "fid": 7,
+        "Join_Count": 49,
+        "RefName": "6",
+        "Text": "6",
+        "Distance": 0,
+        "latitude": 3.772190236,
+        "longitude": 34.7318957,
+        "altitude": 604,
+        "Plot_Statu": "Developed",
+        "Land_Use": "Residential",
+        "Village": "Kv1",
+        "Neighborho": "N6",
+        "Compound": "C5",
+        "Shelter_Nu": "H1",
+        "Shelter_Co": "Kv1N6C5H1",
+        "Shelter_Re": "Kv1N6C5H1",
+        "Shelter_na": "Permanent",
+        "Shelter_ta": "Shelter is Tagged",
+        "precision_": 5,
+        "Unhcr_Shel": 1,
+        "Shel_Neig": 49,
+        "Shape__Area": 38496.56481933594,
+        "Shape__Length": 800.61160742932
+      },
+      "id": 7
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              34.7301704854452,
+              3.77076882016823
+            ],
+            [
+              34.7314174906881,
+              3.77004479328138
+            ],
+            [
+              34.730345361726,
+              3.76818146697949
+            ],
+            [
+              34.729098356839,
+              3.76890549153576
+            ],
+            [
+              34.7301704854452,
+              3.77076882016823
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "fid": 8,
+        "Join_Count": 107,
+        "RefName": "7",
+        "Text": "7",
+        "Distance": 0,
+        "latitude": 3.768755123,
+        "longitude": 34.72966125,
+        "altitude": 601,
+        "Plot_Statu": "Developed",
+        "Land_Use": "Residential",
+        "Village": "Kv1",
+        "Neighborho": "N7",
+        "Compound": "C1",
+        "Shelter_Nu": "H1",
+        "Shelter_Co": "Kv1N7C1H1",
+        "Shelter_Re": "Kv1N7C1H1",
+        "Shelter_na": "Permanent",
+        "Shelter_ta": "No Tagged",
+        "precision_": 5,
+        "Unhcr_Shel": 1,
+        "Shel_Neig": 107,
+        "Shape__Area": 38496.435546875,
+        "Shape__Length": 800.6102656802578
+      },
+      "id": 8
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              34.7294965862312,
+              3.76598218863434
+            ],
+            [
+              34.7305687090239,
+              3.7678455172534
+            ],
+            [
+              34.7318022737829,
+              3.76711607995551
+            ],
+            [
+              34.7307301506048,
+              3.76525275288494
+            ],
+            [
+              34.7294965862312,
+              3.76598218863434
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "fid": 9,
+        "Join_Count": 29,
+        "RefName": "8",
+        "Text": "8",
+        "Distance": 0,
+        "latitude": 3.767348293,
+        "longitude": 34.73130232,
+        "altitude": 604,
+        "Plot_Statu": "Developed",
+        "Land_Use": "Residential",
+        "Village": "Kv1",
+        "Neighborho": "N8",
+        "Compound": "C5",
+        "Shelter_Nu": "H1",
+        "Shelter_Co": "Kv1N8C5H1",
+        "Shelter_Re": "Kv1N8C5H1",
+        "Shelter_na": "Permanent",
+        "Shelter_ta": "Shelter is Tagged",
+        "precision_": 4,
+        "Unhcr_Shel": 1,
+        "Shel_Neig": 29,
+        "Shape__Area": 38257.28356933594,
+        "Shape__Length": 798.6391448632268
+      },
+      "id": 9
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              34.7330772472735,
+              3.76929809576352
+            ],
+            [
+              34.7318302452807,
+              3.77002212392235
+            ],
+            [
+              34.7329023806188,
+              3.771885445805
+            ],
+            [
+              34.7341493829658,
+              3.77116141531388
+            ],
+            [
+              34.7330772472735,
+              3.76929809576352
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "fid": 10,
+        "Join_Count": 31,
+        "RefName": "9",
+        "Text": "9",
+        "Distance": 0,
+        "latitude": 3.770599709,
+        "longitude": 34.7336613,
+        "altitude": 598,
+        "Plot_Statu": "Developed",
+        "Land_Use": "Residential",
+        "Village": "Kv1",
+        "Neighborho": "N9",
+        "Compound": "C6",
+        "Shelter_Nu": "H7",
+        "Shelter_Co": "Kv1N9C6H7",
+        "Shelter_Re": "Kv1N9C6H7",
+        "Shelter_na": "T-Shelter",
+        "Shelter_ta": "Shelter is Tagged",
+        "precision_": 4,
+        "Unhcr_Shel": 1,
+        "Shel_Neig": 31,
+        "Shape__Area": 38496.422119140625,
+        "Shape__Length": 800.6101202274559
+      },
+      "id": 10
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              34.7364658953283,
+              3.77520124938241
+            ],
+            [
+              34.7353937471051,
+              3.77333793744662
+            ],
+            [
+              34.7341467443324,
+              3.77406197065521
+            ],
+            [
+              34.7352188922013,
+              3.775925284926
+            ],
+            [
+              34.7364658953283,
+              3.77520124938241
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "fid": 11,
+        "Join_Count": 42,
+        "RefName": "10",
+        "Text": "10",
+        "Distance": 0,
+        "latitude": 3.773807147,
+        "longitude": 34.73493836,
+        "altitude": 598,
+        "Plot_Statu": "Developed",
+        "Land_Use": "Residential",
+        "Village": "Kv1",
+        "Neighborho": "N10",
+        "Compound": "C8",
+        "Shelter_Nu": "H14",
+        "Shelter_Co": "Kv1N10C8H14",
+        "Shelter_Re": "Kv1N10C8H14",
+        "Shelter_na": "Permanent",
+        "Shelter_ta": "Shelter is Tagged",
+        "precision_": 6,
+        "Unhcr_Shel": 1,
+        "Shel_Neig": 42,
+        "Shape__Area": 38496.68103027344,
+        "Shape__Length": 800.6128071415437
+      },
+      "id": 11
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              34.7365524960949,
+              3.77535700645642
+            ],
+            [
+              34.7353054929338,
+              3.77608104219204
+            ],
+            [
+              34.7363776470706,
+              3.77794435174853
+            ],
+            [
+              34.7376246505859,
+              3.77722031367654
+            ],
+            [
+              34.7365524960949,
+              3.77535700645642
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "fid": 12,
+        "Join_Count": 0,
+        "RefName": "11",
+        "Text": "11",
+        "Distance": 0,
+        "latitude": 0,
+        "longitude": 0,
+        "altitude": 0,
+        "Plot_Statu": " ",
+        "Land_Use": " ",
+        "Village": " ",
+        "Neighborho": " ",
+        "Compound": " ",
+        "Shelter_Nu": " ",
+        "Shelter_Co": " ",
+        "Shelter_Re": " ",
+        "Shelter_na": " ",
+        "Shelter_ta": " ",
+        "precision_": 0,
+        "Unhcr_Shel": 0,
+        "Shel_Neig": 0,
+        "Shape__Area": 38496.79638671875,
+        "Shape__Length": 800.6139754340411
+      },
+      "id": 12
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              34.737783747039,
+              3.77713087946708
+            ],
+            [
+              34.739030747605,
+              3.77640684043383
+            ],
+            [
+              34.737958592708,
+              3.77454353494602
+            ],
+            [
+              34.7367115924947,
+              3.77526757164258
+            ],
+            [
+              34.737783747039,
+              3.77713087946708
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "fid": 13,
+        "Join_Count": 93,
+        "RefName": "12",
+        "Text": "12",
+        "Distance": 0,
+        "latitude": 3.775077,
+        "longitude": 34.737247,
+        "altitude": 605,
+        "Plot_Statu": "Developed",
+        "Land_Use": "Residential",
+        "Village": "Kv1",
+        "Neighborho": "N12",
+        "Compound": "C1",
+        "Shelter_Nu": "H2",
+        "Shelter_Co": "Kv1N12C1H2",
+        "Shelter_Re": "Kv1N12C1H2",
+        "Shelter_na": "Permanent",
+        "Shelter_ta": "No Tagged",
+        "precision_": 5,
+        "Unhcr_Shel": 1,
+        "Shel_Neig": 93,
+        "Shape__Area": 38496.68176269531,
+        "Shape__Length": 800.6128118160211
+      },
+      "id": 13
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              34.7395197902885,
+              3.77363706065286
+            ],
+            [
+              34.7382727942518,
+              3.77436109841081
+            ],
+            [
+              34.7393449492375,
+              3.7762244033098
+            ],
+            [
+              34.7405882211972,
+              3.77549388885517
+            ],
+            [
+              34.7395197902885,
+              3.77363706065286
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "fid": 14,
+        "Join_Count": 94,
+        "RefName": "20",
+        "Text": "20",
+        "Distance": 0,
+        "latitude": 3.774239486,
+        "longitude": 34.73914387,
+        "altitude": 584,
+        "Plot_Statu": "Developed",
+        "Land_Use": "Residential",
+        "Village": "Kv1",
+        "Neighborho": "N20",
+        "Compound": "C8",
+        "Shelter_Nu": "H1",
+        "Shelter_Co": "Kv1N20C8H1",
+        "Shelter_Re": "Kv1N20C8H1",
+        "Shelter_na": "T-Shelter",
+        "Shelter_ta": "No Tagged",
+        "precision_": 5,
+        "Unhcr_Shel": 1,
+        "Shel_Neig": 94,
+        "Shape__Area": 38429.65185546875,
+        "Shape__Length": 799.7854027709162
+      },
+      "id": 14
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              34.7383572193076,
+              3.77161739497305
+            ],
+            [
+              34.7371102227504,
+              3.77234143020058
+            ],
+            [
+              34.7381823714574,
+              3.77420473801744
+            ],
+            [
+              34.7394293683655,
+              3.7734807004542
+            ],
+            [
+              34.7383572193076,
+              3.77161739497305
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "fid": 15,
+        "Join_Count": 99,
+        "RefName": "19",
+        "Text": "19",
+        "Distance": 0,
+        "latitude": 3.772173976,
+        "longitude": 34.73792547,
+        "altitude": 591,
+        "Plot_Statu": "Developed",
+        "Land_Use": "Residential",
+        "Village": "Kv1",
+        "Neighborho": "N19",
+        "Compound": "C8",
+        "Shelter_Nu": "H1",
+        "Shelter_Co": "Kv1N19C8H1",
+        "Shelter_Re": "Kv1N19C8H1",
+        "Shelter_na": "T-Shelter",
+        "Shelter_ta": "No Tagged",
+        "precision_": 5,
+        "Unhcr_Shel": 1,
+        "Shel_Neig": 99,
+        "Shape__Area": 38496.39538574219,
+        "Shape__Length": 800.6098061183558
+      },
+      "id": 15
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              34.7371908748348,
+              3.7696048163893
+            ],
+            [
+              34.7359438786444,
+              3.77032884908663
+            ],
+            [
+              34.7370160210895,
+              3.77219216163161
+            ],
+            [
+              34.738263017631,
+              3.77146812659993
+            ],
+            [
+              34.7371908748348,
+              3.7696048163893
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "fid": 16,
+        "Join_Count": 99,
+        "RefName": "18",
+        "Text": "18",
+        "Distance": 0,
+        "latitude": 3.770112782,
+        "longitude": 34.73645671,
+        "altitude": 606,
+        "Plot_Statu": "Developed",
+        "Land_Use": "Residential",
+        "Village": "Kv1",
+        "Neighborho": "N18",
+        "Compound": "C1",
+        "Shelter_Nu": "H1",
+        "Shelter_Co": "Kv1N18C1H1",
+        "Shelter_Re": "Kv1N18C1H1",
+        "Shelter_na": "T-Shelter",
+        "Shelter_ta": "Shelter is Tagged",
+        "precision_": 5,
+        "Unhcr_Shel": 1,
+        "Shel_Neig": 99,
+        "Shape__Area": 38496.28088378906,
+        "Shape__Length": 800.6086492976027
+      },
+      "id": 16
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              34.7360328434056,
+              3.7675907990202
+            ],
+            [
+              34.7347858475958,
+              3.76831482919666
+            ],
+            [
+              34.7358579837907,
+              3.77017814554558
+            ],
+            [
+              34.7371049799515,
+              3.76945411303612
+            ],
+            [
+              34.7360328434056,
+              3.7675907990202
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "fid": 17,
+        "Join_Count": 76,
+        "RefName": "17",
+        "Text": "17",
+        "Distance": 0,
+        "latitude": 3.768241396,
+        "longitude": 34.73519867,
+        "altitude": 608,
+        "Plot_Statu": "Developed",
+        "Land_Use": "Residential",
+        "Village": "Kv1",
+        "Neighborho": "N17",
+        "Compound": "C1",
+        "Shelter_Nu": "H3",
+        "Shelter_Co": "Kv1N17C1H3",
+        "Shelter_Re": "Kv1N17C1H3",
+        "Shelter_na": "T-Shelter",
+        "Shelter_ta": "Shelter is Tagged",
+        "precision_": 5,
+        "Unhcr_Shel": 1,
+        "Shel_Neig": 76,
+        "Shape__Area": 38496.15222167969,
+        "Shape__Length": 800.6073131205432
+      },
+      "id": 17
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              34.7332330883674,
+              3.76920747763508
+            ],
+            [
+              34.7343052241037,
+              3.77107079689405
+            ],
+            [
+              34.73555222351,
+              3.77034676544697
+            ],
+            [
+              34.7344800874211,
+              3.76848344852064
+            ],
+            [
+              34.7332330883674,
+              3.76920747763508
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "fid": 18,
+        "Join_Count": 90,
+        "RefName": "14",
+        "Text": "14",
+        "Distance": 0,
+        "latitude": 3.769099326,
+        "longitude": 34.73370376,
+        "altitude": 605,
+        "Plot_Statu": "Developed",
+        "Land_Use": "Residential",
+        "Village": "Kv1",
+        "Neighborho": "N14",
+        "Compound": "C1",
+        "Shelter_Nu": "H2",
+        "Shelter_Co": "Kv1N14C1H2",
+        "Shelter_Re": "Kv1N14C1H2",
+        "Shelter_na": "Permanent",
+        "Shelter_ta": "Shelter is Tagged",
+        "precision_": 5,
+        "Unhcr_Shel": 1,
+        "Shel_Neig": 90,
+        "Shape__Area": 38496.29345703125,
+        "Shape__Length": 800.6087841426232
+      },
+      "id": 18
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              34.7308859806495,
+              3.76516180051182
+            ],
+            [
+              34.7319581038084,
+              3.76702512744788
+            ],
+            [
+              34.7332051024776,
+              3.76630110108421
+            ],
+            [
+              34.7321329789659,
+              3.76443777647802
+            ],
+            [
+              34.7308859806495,
+              3.76516180051182
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "fid": 19,
+        "Join_Count": 56,
+        "RefName": "15",
+        "Text": "15",
+        "Distance": 0,
+        "latitude": 3.764970903,
+        "longitude": 34.73146521,
+        "altitude": 605,
+        "Plot_Statu": "Developed",
+        "Land_Use": "Residential",
+        "Village": "Kv1",
+        "Neighborho": "N15",
+        "Compound": "C1",
+        "Shelter_Nu": "H1",
+        "Shelter_Co": "Kv1N15C1H1",
+        "Shelter_Re": "Kv1N15C1H1",
+        "Shelter_na": "Permanent",
+        "Shelter_ta": "Shelter is Tagged",
+        "precision_": 5,
+        "Unhcr_Shel": 1,
+        "Shel_Neig": 56,
+        "Shape__Area": 38496.03552246094,
+        "Shape__Length": 800.6061091800218
+      },
+      "id": 19
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              34.7324392263265,
+              3.76426967491368
+            ],
+            [
+              34.733511349946,
+              3.76613299894172
+            ],
+            [
+              34.7347583453732,
+              3.7654089715156
+            ],
+            [
+              34.7336862214027,
+              3.76354564981782
+            ],
+            [
+              34.7324392263265,
+              3.76426967491368
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "fid": 20,
+        "Join_Count": 27,
+        "RefName": "16",
+        "Text": "16",
+        "Distance": 0,
+        "latitude": 3.76584765,
+        "longitude": 34.73385799,
+        "altitude": 606,
+        "Plot_Statu": "Developed",
+        "Land_Use": "Residential",
+        "Village": "Kv1",
+        "Neighborho": "N16",
+        "Compound": "C4",
+        "Shelter_Nu": "H14",
+        "Shelter_Co": "Kv1N16C4H14",
+        "Shelter_Re": "Kv1N16C4H14",
+        "Shelter_na": "T-Shelter",
+        "Shelter_ta": "Shelter is Tagged",
+        "precision_": 5,
+        "Unhcr_Shel": 1,
+        "Shel_Neig": 27,
+        "Shape__Area": 38495.89453125,
+        "Shape__Length": 800.6046401951522
+      },
+      "id": 20
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              34.7304706400693,
+              3.75853967706777
+            ],
+            [
+              34.7300455780178,
+              3.75878995396982
+            ],
+            [
+              34.730766322188,
+              3.76004261495449
+            ],
+            [
+              34.7311931489757,
+              3.75979430895526
+            ],
+            [
+              34.7304706400693,
+              3.75853967706777
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "fid": 21,
+        "Join_Count": 0,
+        "RefName": " ",
+        "Text": "21",
+        "Distance": 165.83607198,
+        "latitude": 0,
+        "longitude": 0,
+        "altitude": 0,
+        "Plot_Statu": " ",
+        "Land_Use": " ",
+        "Village": " ",
+        "Neighborho": " ",
+        "Compound": " ",
+        "Shelter_Nu": " ",
+        "Shelter_Co": " ",
+        "Shelter_Re": " ",
+        "Shelter_na": " ",
+        "Shelter_ta": " ",
+        "precision_": 0,
+        "Unhcr_Shel": 0,
+        "Shel_Neig": 0,
+        "Shape__Area": 8865.485595703125,
+        "Shape__Length": 432.51054600232607
+      },
+      "id": 21
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              34.7317622138888,
+              3.75968890731804
+            ],
+            [
+              34.730855056848,
+              3.76021321653769
+            ],
+            [
+              34.7323943819056,
+              3.762869968285
+            ],
+            [
+              34.7332985256419,
+              3.76234474656277
+            ],
+            [
+              34.7317622138888,
+              3.75968890731804
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "fid": 22,
+        "Join_Count": 90,
+        "RefName": "21",
+        "Text": "21",
+        "Distance": 0,
+        "latitude": 3.762257723,
+        "longitude": 34.73220508,
+        "altitude": 600,
+        "Plot_Statu": "Developed",
+        "Land_Use": "Residential",
+        "Village": "Kv1",
+        "Neighborho": "N21",
+        "Compound": "C1",
+        "Shelter_Nu": "H1",
+        "Shelter_Co": "Kv1N21C1H1",
+        "Shelter_Re": "Kv1N21C1H1",
+        "Shelter_na": "T-Shelter",
+        "Shelter_ta": "No Tagged",
+        "precision_": 5,
+        "Unhcr_Shel": 1,
+        "Shel_Neig": 90,
+        "Shape__Area": 39897.426025390625,
+        "Shape__Length": 917.6207820460836
+      },
+      "id": 22
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              34.7291747088794,
+              3.76308501529335
+            ],
+            [
+              34.7298954584857,
+              3.76433767582355
+            ],
+            [
+              34.7317503675782,
+              3.76326069217698
+            ],
+            [
+              34.7310296176191,
+              3.76200803397488
+            ],
+            [
+              34.7291747088794,
+              3.76308501529335
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "fid": 23,
+        "Join_Count": 81,
+        "RefName": "25",
+        "Text": "25",
+        "Distance": 0,
+        "latitude": 3.762980411,
+        "longitude": 34.73113647,
+        "altitude": 609,
+        "Plot_Statu": "Developed",
+        "Land_Use": "Residential",
+        "Village": "Kv1",
+        "Neighborho": "N25",
+        "Compound": "C4",
+        "Shelter_Nu": "H2",
+        "Shelter_Co": "Kv1N25C4H2",
+        "Shelter_Re": "Kv1N25C4H2",
+        "Shelter_na": "T-Shelter",
+        "Shelter_ta": "No Tagged",
+        "precision_": 5,
+        "Unhcr_Shel": 1,
+        "Shel_Neig": 81,
+        "Shape__Area": 38495.86291503906,
+        "Shape__Length": 800.080648235304
+      },
+      "id": 23
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              34.7290188332967,
+              3.76317551762055
+            ],
+            [
+              34.7271639174015,
+              3.76425249690479
+            ],
+            [
+              34.727884666623,
+              3.76550515995828
+            ],
+            [
+              34.7297395828732,
+              3.76442817834638
+            ],
+            [
+              34.7290188332967,
+              3.76317551762055
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "fid": 24,
+        "Join_Count": 66,
+        "RefName": "26",
+        "Text": "26",
+        "Distance": 0,
+        "latitude": 3.764057821,
+        "longitude": 34.72913152,
+        "altitude": 600,
+        "Plot_Statu": "Developed",
+        "Land_Use": "Residential",
+        "Village": "Kv1",
+        "Neighborho": "N26",
+        "Compound": "C4",
+        "Shelter_Nu": "H1",
+        "Shelter_Co": "Kv1N26C4H1",
+        "Shelter_Re": "Kv1N26C4H1",
+        "Shelter_na": "T-Shelter",
+        "Shelter_ta": "No Tagged",
+        "precision_": 5,
+        "Unhcr_Shel": 1,
+        "Shel_Neig": 66,
+        "Shape__Area": 38496.060302734375,
+        "Shape__Length": 800.0827297579297
+      },
+      "id": 24
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              34.7269301041248,
+              3.76438825058406
+            ],
+            [
+              34.7250751826322,
+              3.76546522774735
+            ],
+            [
+              34.7257959314514,
+              3.76671789342131
+            ],
+            [
+              34.7276508533014,
+              3.76564091393092
+            ],
+            [
+              34.7269301041248,
+              3.76438825058406
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "fid": 25,
+        "Join_Count": 69,
+        "RefName": "28",
+        "Text": "28",
+        "Distance": 0,
+        "latitude": 3.766133313,
+        "longitude": 34.72557108,
+        "altitude": 603,
+        "Plot_Statu": "Developed",
+        "Land_Use": "Residential",
+        "Village": "Kv1",
+        "Neighborho": "N28",
+        "Compound": "C1",
+        "Shelter_Nu": "H1",
+        "Shelter_Co": "Kv1N28C1H1",
+        "Shelter_Re": "Kv1N28C1H1",
+        "Shelter_na": "T-Shelter",
+        "Shelter_ta": "Shelter is Tagged",
+        "precision_": 4,
+        "Unhcr_Shel": 1,
+        "Shel_Neig": 69,
+        "Shape__Area": 38496.237060546875,
+        "Shape__Length": 800.084537675504
+      },
+      "id": 25
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              34.7269035611863,
+              3.76421471256027
+            ],
+            [
+              34.7261828149019,
+              3.76296204751779
+            ],
+            [
+              34.7243278930777,
+              3.76403902214939
+            ],
+            [
+              34.7250486390048,
+              3.76529168951807
+            ],
+            [
+              34.7269035611863,
+              3.76421471256027
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "fid": 26,
+        "Join_Count": 47,
+        "RefName": "29",
+        "Text": "29",
+        "Distance": 0,
+        "latitude": 3.764752726,
+        "longitude": 34.72486614,
+        "altitude": 600,
+        "Plot_Statu": "Developed",
+        "Land_Use": "Residential",
+        "Village": "Kv1",
+        "Neighborho": "N29",
+        "Compound": "C1",
+        "Shelter_Nu": "H3",
+        "Shelter_Co": "Kv1N29C1H3",
+        "Shelter_Re": "Kv1N29C1H3",
+        "Shelter_na": "T-Shelter",
+        "Shelter_ta": "Shelter is Tagged",
+        "precision_": 4,
+        "Unhcr_Shel": 1,
+        "Shel_Neig": 47,
+        "Shape__Area": 38496.15673828125,
+        "Shape__Length": 800.083729776476
+      },
+      "id": 26
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              34.7282079933659,
+              3.76176627274656
+            ],
+            [
+              34.7263530778703,
+              3.76284324941322
+            ],
+            [
+              34.7270738241579,
+              3.76409591425027
+            ],
+            [
+              34.7289287400087,
+              3.76301893525693
+            ],
+            [
+              34.7282079933659,
+              3.76176627274656
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "fid": 27,
+        "Join_Count": 96,
+        "RefName": "27",
+        "Text": "27",
+        "Distance": 0,
+        "latitude": 3.763456503,
+        "longitude": 34.72692775,
+        "altitude": 607,
+        "Plot_Statu": "Developed",
+        "Land_Use": "Residential",
+        "Village": "Kv1",
+        "Neighborho": "N27",
+        "Compound": "C1",
+        "Shelter_Nu": "H1",
+        "Shelter_Co": "Kv1N27C1H1",
+        "Shelter_Re": "Kv1N27C1H1",
+        "Shelter_na": "T-Shelter",
+        "Shelter_ta": "No Tagged",
+        "precision_": 5,
+        "Unhcr_Shel": 1,
+        "Shel_Neig": 96,
+        "Shape__Area": 38495.97021484375,
+        "Shape__Length": 800.0817913857454
+      },
+      "id": 27
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              34.7290846146875,
+              3.76292843295595
+            ],
+            [
+              34.7309395242833,
+              3.76185145192667
+            ],
+            [
+              34.7302187772579,
+              3.760598791939
+            ],
+            [
+              34.728363868015,
+              3.76167577064112
+            ],
+            [
+              34.7290846146875,
+              3.76292843295595
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "fid": 28,
+        "Join_Count": 77,
+        "RefName": "24",
+        "Text": "24",
+        "Distance": 0,
+        "latitude": 3.762307595,
+        "longitude": 34.72891686,
+        "altitude": 611,
+        "Plot_Statu": "Developed",
+        "Land_Use": "Residential",
+        "Village": "Kv1",
+        "Neighborho": "N24",
+        "Compound": "C1",
+        "Shelter_Nu": "H1",
+        "Shelter_Co": "Kv1N24C1H1",
+        "Shelter_Re": "Kv1N24C1H1",
+        "Shelter_na": "T-Shelter",
+        "Shelter_ta": "Shelter is Tagged",
+        "precision_": 5,
+        "Unhcr_Shel": 1,
+        "Shel_Neig": 77,
+        "Shape__Area": 38495.78649902344,
+        "Shape__Length": 800.0798840974222
+      },
+      "id": 28
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              34.728263989606,
+              3.76144309855344
+            ],
+            [
+              34.7301671305496,
+              3.76045467839169
+            ],
+            [
+              34.7295056520305,
+              3.75916944467533
+            ],
+            [
+              34.7275773312858,
+              3.76014675268374
+            ],
+            [
+              34.728263989606,
+              3.76144309855344
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "fid": 29,
+        "Join_Count": 98,
+        "RefName": "23",
+        "Text": "23",
+        "Distance": 0,
+        "latitude": 3.760888162,
+        "longitude": 34.72807917,
+        "altitude": 599,
+        "Plot_Statu": "Developed",
+        "Land_Use": "Residential",
+        "Village": "Kv1",
+        "Neighborho": "N23",
+        "Compound": "C1",
+        "Shelter_Nu": "H1",
+        "Shelter_Co": "Kv1N23C1H1",
+        "Shelter_Re": "Kv1N23C1H1",
+        "Shelter_na": "T-Shelter",
+        "Shelter_ta": "No Tagged",
+        "precision_": 5,
+        "Unhcr_Shel": 1,
+        "Shel_Neig": 98,
+        "Shape__Area": 38936.8447265625,
+        "Shape__Length": 804.3576370828035
+      },
+      "id": 29
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              34.7292473673295,
+              3.75645813700164
+            ],
+            [
+              34.7288169510866,
+              3.75670704823619
+            ],
+            [
+              34.7291334743894,
+              3.75725526380951
+            ],
+            [
+              34.7295626556248,
+              3.75700590265255
+            ],
+            [
+              34.7292473673295,
+              3.75645813700164
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "fid": 30,
+        "Join_Count": 0,
+        "RefName": " ",
+        "Text": "22",
+        "Distance": 252.93141111,
+        "latitude": 0,
+        "longitude": 0,
+        "altitude": 0,
+        "Plot_Statu": " ",
+        "Land_Use": " ",
+        "Village": " ",
+        "Neighborho": " ",
+        "Compound": " ",
+        "Shelter_Nu": " ",
+        "Shelter_Co": " ",
+        "Shelter_Re": " ",
+        "Shelter_na": " ",
+        "Shelter_ta": " ",
+        "precision_": 0,
+        "Unhcr_Shel": 0,
+        "Shel_Neig": 0,
+        "Shape__Area": 3902.323486328125,
+        "Shape__Length": 251.71666653863093
+      },
+      "id": 30
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              34.729670552089,
+              3.75717725470128
+            ],
+            [
+              34.7292454901129,
+              3.75742753192374
+            ],
+            [
+              34.7299662314321,
+              3.7586801946576
+            ],
+            [
+              34.7303930590412,
+              3.75843188924446
+            ],
+            [
+              34.729670552089,
+              3.75717725470128
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "fid": 31,
+        "Join_Count": 0,
+        "RefName": " ",
+        "Text": "22",
+        "Distance": 249.25688902,
+        "latitude": 0,
+        "longitude": 0,
+        "altitude": 0,
+        "Plot_Statu": " ",
+        "Land_Use": " ",
+        "Village": " ",
+        "Neighborho": " ",
+        "Compound": " ",
+        "Shelter_Nu": " ",
+        "Shelter_Co": " ",
+        "Shelter_Re": " ",
+        "Shelter_na": " ",
+        "Shelter_ta": " ",
+        "precision_": 0,
+        "Unhcr_Shel": 0,
+        "Shel_Neig": 0,
+        "Shape__Area": 8865.480224609375,
+        "Shape__Length": 432.5103398445695
+      },
+      "id": 31
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              34.7274781458556,
+              3.75998659782281
+            ],
+            [
+              34.7293835465839,
+              3.75900258496105
+            ],
+            [
+              34.7287250186605,
+              3.75771582298976
+            ],
+            [
+              34.726819618664,
+              3.75869983348358
+            ],
+            [
+              34.7274781458556,
+              3.75998659782281
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "fid": 32,
+        "Join_Count": 104,
+        "RefName": "22",
+        "Text": "22",
+        "Distance": 0,
+        "latitude": 3.759371624,
+        "longitude": 34.7272963,
+        "altitude": 613,
+        "Plot_Statu": "Developed",
+        "Land_Use": "Residential",
+        "Village": "Kv1",
+        "Neighborho": "N22",
+        "Compound": "C1",
+        "Shelter_Nu": "H1",
+        "Shelter_Co": "Kv1N22C1H1",
+        "Shelter_Re": "Kv1N22C1H1",
+        "Shelter_na": "T-Shelter",
+        "Shelter_ta": "No Tagged",
+        "precision_": 5,
+        "Unhcr_Shel": 1,
+        "Shel_Neig": 104,
+        "Shape__Area": 38495.595458984375,
+        "Shape__Length": 800.0341021912108
+      },
+      "id": 32
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              34.7274023198416,
+              3.76035312446769
+            ],
+            [
+              34.7255474047628,
+              3.7614300985222
+            ],
+            [
+              34.7262681481158,
+              3.76268276423167
+            ],
+            [
+              34.7281230635496,
+              3.76160578785144
+            ],
+            [
+              34.7274023198416,
+              3.76035312446769
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "fid": 33,
+        "Join_Count": 0,
+        "RefName": "30",
+        "Text": "30",
+        "Distance": 0,
+        "latitude": 0,
+        "longitude": 0,
+        "altitude": 0,
+        "Plot_Statu": " ",
+        "Land_Use": " ",
+        "Village": " ",
+        "Neighborho": " ",
+        "Compound": " ",
+        "Shelter_Nu": " ",
+        "Shelter_Co": " ",
+        "Shelter_Re": " ",
+        "Shelter_na": " ",
+        "Shelter_ta": " ",
+        "precision_": 0,
+        "Unhcr_Shel": 0,
+        "Shel_Neig": 0,
+        "Shape__Area": 38495.85876464844,
+        "Shape__Length": 800.0806724529807
+      },
+      "id": 33
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              34.7269965143782,
+              3.7596491996276
+            ],
+            [
+              34.7251405271787,
+              3.76072378809936
+            ],
+            [
+              34.7254577900771,
+              3.76127455758428
+            ],
+            [
+              34.727312705112,
+              3.7601975838187
+            ],
+            [
+              34.7269965143782,
+              3.7596491996276
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "fid": 34,
+        "Join_Count": 0,
+        "RefName": "31",
+        "Text": "31",
+        "Distance": 0,
+        "latitude": 0,
+        "longitude": 0,
+        "altitude": 0,
+        "Plot_Statu": " ",
+        "Land_Use": " ",
+        "Village": " ",
+        "Neighborho": " ",
+        "Compound": " ",
+        "Shelter_Nu": " ",
+        "Shelter_Co": " ",
+        "Shelter_Re": " ",
+        "Shelter_na": " ",
+        "Shelter_ta": " ",
+        "precision_": 0,
+        "Unhcr_Shel": 0,
+        "Shel_Neig": 0,
+        "Shape__Area": 16895.008422851562,
+        "Shape__Length": 619.2183121789299
+      },
+      "id": 34
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              34.7405034795651,
+              3.77895196579882
+            ],
+            [
+              34.7394350486305,
+              3.77709513760688
+            ],
+            [
+              34.7381880525853,
+              3.77781917537335
+            ],
+            [
+              34.739260207597,
+              3.77968248026223
+            ],
+            [
+              34.7405034795651,
+              3.77895196579882
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "fid": 35,
+        "Join_Count": 0,
+        "RefName": "32",
+        "Text": "32",
+        "Distance": 0,
+        "latitude": 0,
+        "longitude": 0,
+        "altitude": 0,
+        "Plot_Statu": " ",
+        "Land_Use": " ",
+        "Village": " ",
+        "Neighborho": " ",
+        "Compound": " ",
+        "Shelter_Nu": " ",
+        "Shelter_Co": " ",
+        "Shelter_Re": " ",
+        "Shelter_na": " ",
+        "Shelter_ta": " ",
+        "precision_": 0,
+        "Unhcr_Shel": 0,
+        "Shel_Neig": 0,
+        "Shape__Area": 38429.80529785156,
+        "Shape__Length": 799.7871668019442
+      },
+      "id": 35
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              34.7416744717261,
+              3.78096608426158
+            ],
+            [
+              34.7406060408255,
+              3.77910925604705
+            ],
+            [
+              34.7393590447798,
+              3.77983329379928
+            ],
+            [
+              34.7404311997576,
+              3.78169659871067
+            ],
+            [
+              34.7416744717261,
+              3.78096608426158
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "fid": 36,
+        "Join_Count": 0,
+        "RefName": "33",
+        "Text": "33",
+        "Distance": 0,
+        "latitude": 0,
+        "longitude": 0,
+        "altitude": 0,
+        "Plot_Statu": " ",
+        "Land_Use": " ",
+        "Village": " ",
+        "Neighborho": " ",
+        "Compound": " ",
+        "Shelter_Nu": " ",
+        "Shelter_Co": " ",
+        "Shelter_Re": " ",
+        "Shelter_na": " ",
+        "Shelter_ta": " ",
+        "precision_": 0,
+        "Unhcr_Shel": 0,
+        "Shel_Neig": 0,
+        "Shape__Area": 38429.89440917969,
+        "Shape__Length": 799.7881920342529
+      },
+      "id": 36
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              34.7432183620842,
+              3.78006728472887
+            ],
+            [
+              34.7421499311701,
+              3.77821045652444
+            ],
+            [
+              34.7409029351261,
+              3.77893449428284
+            ],
+            [
+              34.7419750901173,
+              3.78079779918396
+            ],
+            [
+              34.7432183620842,
+              3.78006728472887
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "fid": 37,
+        "Join_Count": 70,
+        "RefName": "34",
+        "Text": "34",
+        "Distance": 0,
+        "latitude": 3.778775563,
+        "longitude": 34.74142475,
+        "altitude": 592,
+        "Plot_Statu": "Developed",
+        "Land_Use": "Residential",
+        "Village": "Kv1",
+        "Neighborho": "N34",
+        "Compound": "C1",
+        "Shelter_Nu": "H1",
+        "Shelter_Co": "Kv1N34C1H1",
+        "Shelter_Re": "Kv1N34C1H1",
+        "Shelter_na": "T-Shelter",
+        "Shelter_ta": "No Tagged",
+        "precision_": 5,
+        "Unhcr_Shel": 1,
+        "Shel_Neig": 70,
+        "Shape__Area": 38429.85461425781,
+        "Shape__Length": 799.787733935702
+      },
+      "id": 37
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              34.742058009977,
+              3.77804747304359
+            ],
+            [
+              34.7409895790771,
+              3.77619064482182
+            ],
+            [
+              34.7397425830231,
+              3.77691468257147
+            ],
+            [
+              34.740814738,
+              3.77877798749012
+            ],
+            [
+              34.742058009977,
+              3.77804747304359
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "fid": 38,
+        "Join_Count": 72,
+        "RefName": "35",
+        "Text": "35",
+        "Distance": 0,
+        "latitude": 3.77674337,
+        "longitude": 34.74031197,
+        "altitude": 593,
+        "Plot_Statu": "Developed",
+        "Land_Use": "Residential",
+        "Village": "Kv1",
+        "Neighborho": "N24",
+        "Compound": "C1",
+        "Shelter_Nu": "H1",
+        "Shelter_Co": "Kv1N24C1H1",
+        "Shelter_Re": "Kv1N24C1H1",
+        "Shelter_na": "T-Shelter",
+        "Shelter_ta": "Shelter is Tagged",
+        "precision_": 5,
+        "Unhcr_Shel": 1,
+        "Shel_Neig": 72,
+        "Shape__Area": 38429.765380859375,
+        "Shape__Length": 799.7867078743328
+      },
+      "id": 38
+    }
+  ]
+}
