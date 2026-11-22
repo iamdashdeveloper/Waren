@@ -39,6 +39,10 @@ import EmergencyWaterAccessibilityPanel from "@/components/map/EmergencyWaterAcc
 import PointIsochronePanel from "@/components/map/PointIsochronePanel"
 import { contourColors } from "@/components/map/isochrone-styles"
 import WaterBalancePanel from "@/components/map/WaterBalancePanel"
+import SupplyByPlanningPanel, {
+  type SupplyPlanningSelectionStatus,
+  type SupplyPlanningTankOption,
+} from "@/components/map/SupplyByPlanningPanel"
 import FullScreenDataLoader from "@/components/map/FullScreenDataLoader"
 import PaneManager from "@/components/workspace/PaneManager"
 import { useWorkspace } from "@/components/workspace/workspace-context"
@@ -50,10 +54,21 @@ import useTankWaterBalances, {
   type WaterBalanceStatus,
 } from "@/components/map/useTankWaterBalances"
 import {
+  DEFAULT_SUPPLY_PLANNING_RADIUS_KM,
+  calculateSupplyPlanningResults,
+  createSupplyPlanningScenarioAllocations,
+  getDistanceKm,
+  getSupplyPlanningRole,
+  supplyPlanningAllocationKey,
+  type SupplyPlanningScenarioAllocation,
+  type SupplyPlanningScenarioResults,
+} from "@/components/map/supply-planning"
+import {
   describeSpatialLayers,
   infrastructureCategories,
   infrastructureCategory,
   layerStyle,
+  type InfrastructureCategory,
   type LayerStatus,
   type MapLayer,
 } from "@/components/map/layers"
@@ -65,6 +80,12 @@ import {
   getEmergencyWaterPointSchema,
   generateEmergencyCoverage,
   generateEmergencyWaterIsochrone,
+  createSupplyPlanningScenario,
+  deleteSupplyPlanningScenario,
+  getSupplyPlanningScenario,
+  getSupplyPlanningScenarios,
+  renameSupplyPlanningScenario,
+  updateSupplyPlanningScenario,
   rankEmergencyAlternatives,
   type EmergencyAlternativeRanking,
   type EmergencyAreaDetails,
@@ -78,6 +99,9 @@ import {
   type SpatialLayerMetadata,
   type SupplyRelationshipColumns,
   type TankWaterBalance,
+  type SupplyPlanningScenario,
+  type SupplyPlanningScenarioInput,
+  type SupplyPlanningScenarioSummary,
 } from "@/lib/api"
 import { useSpatialContext } from "@/components/map/spatial-context"
 import {
@@ -831,14 +855,18 @@ function MapView() {
   } = useWorkspace()
   const tankServiceAreasActive = mapMode === "tankServiceAreas"
   const waterBalanceActive = isPaneOpen("waterBalance")
+  const supplyPlanningActive = isPaneOpen("supplyByPlanningUnit")
+  const [scenarioMapView, setScenarioMapView] = useState(false)
   const waterBalanceTooltipOverlayRef = useRef<Overlay | null>(null)
   const waterBalanceTooltipElementRef = useRef<HTMLDivElement | null>(null)
   const waterBalanceActiveRef = useRef(waterBalanceActive)
   const waterBalanceLoadingRef = useRef(false)
   const tankServiceAreas = useTankServiceAreas(
-    tankServiceAreasActive || waterBalanceActive,
+    tankServiceAreasActive || waterBalanceActive || supplyPlanningActive,
   )
-  const waterBalances = useTankWaterBalances(waterBalanceActive)
+  const waterBalances = useTankWaterBalances(
+    waterBalanceActive || supplyPlanningActive,
+  )
   const allCampsExtent = useMemo(() => getCombinedCampExtent(camps), [camps])
   const allCampsExtentRef = useRef(allCampsExtent)
   useEffect(() => {
@@ -847,6 +875,11 @@ function MapView() {
   const mapElement = useRef<HTMLDivElement>(null)
   const mapInstance = useRef<OLMap | null>(null)
   const mapModeRef = useRef(mapMode)
+  const supplyPlanningActiveRef = useRef(supplyPlanningActive)
+  const supplyPlanningReceiverIdsRef = useRef<string[]>([])
+  const supplyPlanningMapSelectRef = useRef<(tankId: string) => void>(
+    () => undefined,
+  )
   const isochroneActiveRef = useRef(false)
   const analysisModeRef = useRef<"area" | "point">("area")
   const activeAccessibilityWorkflowRef = useRef<"area" | "point" | null>(null)
@@ -854,6 +887,9 @@ function MapView() {
   const mapLayersRef = useRef<Record<string, VectorLayer>>({})
   const connectionLayerRef = useRef<VectorLayer | null>(null)
   const serviceAreaLayerRef = useRef<VectorLayer | null>(null)
+  const supplyPlanningLayerRef = useRef<VectorLayer | null>(null)
+  const supplyPlanningConnectionsLayerRef = useRef<VectorLayer | null>(null)
+  const supplyPlanningServiceAreasLayerRef = useRef<VectorLayer | null>(null)
   const isochroneLayerRef = useRef<VectorLayer | null>(null)
   const emergencyAreaLayerRef = useRef<VectorLayer | null>(null)
   const emergencyPointsLayerRef = useRef<VectorLayer | null>(null)
@@ -907,6 +943,45 @@ function MapView() {
     useState<InfrastructureDetails | null>(null)
   const [selectedServiceArea, setSelectedServiceArea] =
     useState<SelectedServiceArea | null>(null)
+  const [supplyPlanningReceiverIds, setSupplyPlanningReceiverIds] =
+    useState<string[]>([])
+  const [supplyPlanningSupplierIds, setSupplyPlanningSupplierIds] = useState<
+    string[]
+  >([])
+  const [supplyPlanningAllocations, setSupplyPlanningAllocations] = useState<
+    Record<string, number>
+  >({})
+  const [supplyPlanningRadiusKm, setSupplyPlanningRadiusKm] = useState(
+    DEFAULT_SUPPLY_PLANNING_RADIUS_KM,
+  )
+  const [supplyPlanningSelectionNotice, setSupplyPlanningSelectionNotice] =
+    useState<string | null>(null)
+  const [supplyPlanningScenarios, setSupplyPlanningScenarios] = useState<
+    SupplyPlanningScenarioSummary[]
+  >([])
+  const [supplyPlanningActiveScenario, setSupplyPlanningActiveScenario] =
+    useState<SupplyPlanningScenario | null>(null)
+  const [supplyPlanningSelectedScenarioId, setSupplyPlanningSelectedScenarioId] =
+    useState("")
+  const [supplyPlanningEditingScenarioId, setSupplyPlanningEditingScenarioId] =
+    useState<string | null>(null)
+  const [supplyPlanningDraftName, setSupplyPlanningDraftName] = useState("")
+  const [supplyPlanningDraftDescription, setSupplyPlanningDraftDescription] =
+    useState("")
+  const [supplyPlanningSaveStatus, setSupplyPlanningSaveStatus] =
+    useState<SupplyPlanningSelectionStatus>("idle")
+  const [supplyPlanningSaveError, setSupplyPlanningSaveError] =
+    useState<string | null>(null)
+  const [supplyPlanningComparisonIds, setSupplyPlanningComparisonIds] =
+    useState<string[]>([])
+  const [supplyPlanningShowConnections, setSupplyPlanningShowConnections] =
+    useState(true)
+  const [supplyPlanningShowServiceAreas, setSupplyPlanningShowServiceAreas] =
+    useState(true)
+  const [supplyPlanningSelectedAllocation, setSupplyPlanningSelectedAllocation] =
+    useState<SupplyPlanningScenarioAllocation | null>(null)
+  const [supplyPlanningTankCoordinates, setSupplyPlanningTankCoordinates] =
+    useState<Map<string, [number, number]>>(() => new Map())
   const [connectionView, setConnectionView] =
     useState<ConnectionViewState | null>(null)
   const [selectedWaterPoint, setSelectedWaterPoint] =
@@ -936,6 +1011,25 @@ function MapView() {
   >([])
   const [basemapStyle, setBasemapStyle] = useState<"dark" | "light">("dark")
 
+  const supplyPlanningTanks = useMemo<SupplyPlanningTankOption[]>(
+    () =>
+      [...supplyPlanningTankCoordinates.entries()].flatMap(
+        ([tankId, coordinates]) => {
+          const balance = waterBalances.detailsByTankId.get(tankId)
+          if (!balance) return []
+          return [{
+            tankId,
+            balanceM3PerDay: balance.waterBalance,
+            coordinates,
+            waterSupply: balance.waterSupply,
+            waterSupplyPopulation: balance.waterSupplyPopulation,
+            waterDemand: balance.waterDemand,
+          }]
+        },
+      ),
+    [supplyPlanningTankCoordinates, waterBalances.detailsByTankId],
+  )
+
   useEffect(() => {
     const controller = new AbortController()
     void getEmergencyWaterPointSchema(controller.signal)
@@ -962,6 +1056,548 @@ function MapView() {
       ).length,
     [waterBalances.byTankId],
   )
+  const toggleSupplyPlanningReceiver = useCallback(
+    (tankId: string) => {
+      if (supplyPlanningActiveScenario && !supplyPlanningEditingScenarioId) {
+        setSupplyPlanningSelectionNotice(
+          "Saved snapshots are read-only. Choose Edit & recalculate first.",
+        )
+        return
+      }
+      const tank = supplyPlanningTanks.find((item) => item.tankId === tankId)
+      if (!tank || getSupplyPlanningRole(tank.balanceM3PerDay) !== "receiver") {
+        setSupplyPlanningSelectionNotice(
+          "Choose a tank with a recorded negative water balance as the receiver.",
+        )
+        return
+      }
+      const next = supplyPlanningReceiverIds.includes(tankId)
+        ? supplyPlanningReceiverIds.filter((id) => id !== tankId)
+        : [...supplyPlanningReceiverIds, tankId]
+      supplyPlanningReceiverIdsRef.current = next
+      setSupplyPlanningReceiverIds(next)
+      if (!next.includes(tankId)) {
+        setSupplyPlanningAllocations((current) =>
+          Object.fromEntries(
+            Object.entries(current).filter(([key]) => {
+              try {
+                const pair = JSON.parse(key) as unknown
+                return !Array.isArray(pair) || pair[1] !== tankId
+              } catch {
+                return true
+              }
+            }),
+          ),
+        )
+      }
+      setSupplyPlanningSelectionNotice(null)
+    },
+    [
+      setSupplyPlanningAllocations,
+      setSupplyPlanningSelectionNotice,
+      supplyPlanningActiveScenario,
+      supplyPlanningEditingScenarioId,
+      setSupplyPlanningReceiverIds,
+      supplyPlanningReceiverIds,
+      supplyPlanningTanks,
+    ],
+  )
+  const toggleSupplyPlanningSupplier = useCallback(
+    (tankId: string) => {
+      if (supplyPlanningActiveScenario && !supplyPlanningEditingScenarioId) {
+        setSupplyPlanningSelectionNotice(
+          "Saved snapshots are read-only. Choose Edit & recalculate first.",
+        )
+        return
+      }
+      if (supplyPlanningSupplierIds.includes(tankId)) {
+        setSupplyPlanningSupplierIds((current) => current.filter((id) => id !== tankId))
+        setSupplyPlanningAllocations((current) => {
+          return Object.fromEntries(
+            Object.entries(current).filter(([key]) => {
+              try {
+                const pair = JSON.parse(key) as unknown
+                return !Array.isArray(pair) || pair[0] !== tankId
+              } catch {
+                return true
+              }
+            }),
+          )
+        })
+      } else {
+        const tank = supplyPlanningTanks.find((item) => item.tankId === tankId)
+        if (!tank || getSupplyPlanningRole(tank.balanceM3PerDay) !== "supplier") {
+          setSupplyPlanningSelectionNotice(
+            "Choose a tank with a recorded positive water balance as a supplier.",
+          )
+          return
+        }
+        const nearbyReceiver = supplyPlanningTanks.some(
+          (receiver) =>
+            supplyPlanningReceiverIds.includes(receiver.tankId) &&
+            getSupplyPlanningRole(receiver.balanceM3PerDay) === "receiver" &&
+            getDistanceKm(receiver.coordinates, tank.coordinates) <=
+              supplyPlanningRadiusKm,
+        )
+        if (!nearbyReceiver) {
+          setSupplyPlanningSelectionNotice(
+            "Select a deficient receiver within the supplier's proximity first.",
+          )
+          return
+        }
+        setSupplyPlanningSupplierIds((current) => [...current, tankId])
+      }
+      setSupplyPlanningSelectionNotice(null)
+    },
+    [
+      setSupplyPlanningSelectionNotice,
+      setSupplyPlanningAllocations,
+      setSupplyPlanningSupplierIds,
+      supplyPlanningSupplierIds,
+      supplyPlanningRadiusKm,
+      supplyPlanningReceiverIds,
+      supplyPlanningTanks,
+      supplyPlanningActiveScenario,
+      supplyPlanningEditingScenarioId,
+    ],
+  )
+  const selectSupplyPlanningTankFromMap = useCallback(
+    (tankId: string) => {
+      if (supplyPlanningActiveScenario && !supplyPlanningEditingScenarioId) {
+        setSupplyPlanningSelectionNotice(
+          "Saved scenario snapshots are read-only. Choose Edit & recalculate before changing tank selections.",
+        )
+        return
+      }
+      const tank = supplyPlanningTanks.find((item) => item.tankId === tankId)
+      if (!tank) {
+        setSupplyPlanningSelectionNotice(
+          "This tank has no matching recorded water-balance row.",
+        )
+        return
+      }
+      const role = getSupplyPlanningRole(tank.balanceM3PerDay)
+      if (role === "receiver") toggleSupplyPlanningReceiver(tankId)
+      else if (role === "supplier") toggleSupplyPlanningSupplier(tankId)
+      else {
+        setSupplyPlanningSelectionNotice(
+          role === "excluded"
+            ? "A tank with exactly zero balance is excluded from scenario roles."
+            : "This tank has no usable water_balance value.",
+        )
+      }
+    },
+    [
+      setSupplyPlanningSelectionNotice,
+      supplyPlanningTanks,
+      supplyPlanningActiveScenario,
+      supplyPlanningEditingScenarioId,
+      toggleSupplyPlanningReceiver,
+      toggleSupplyPlanningSupplier,
+    ],
+  )
+  const clearSupplyPlanningScenario = useCallback(() => {
+    supplyPlanningReceiverIdsRef.current = []
+    setSupplyPlanningReceiverIds([])
+    setSupplyPlanningSupplierIds([])
+    setSupplyPlanningAllocations({})
+    setSupplyPlanningSelectionNotice(null)
+  }, [
+    setSupplyPlanningAllocations,
+    setSupplyPlanningSelectionNotice,
+    setSupplyPlanningReceiverIds,
+    setSupplyPlanningSupplierIds,
+  ])
+  const changeSupplyPlanningRadius = useCallback((radiusKm: number) => {
+    if (supplyPlanningActiveScenario && !supplyPlanningEditingScenarioId) {
+      setSupplyPlanningSelectionNotice(
+        "Saved snapshots are read-only. Choose Edit & recalculate first.",
+      )
+      return
+    }
+    if (!Number.isFinite(radiusKm)) return
+    setSupplyPlanningRadiusKm(Math.min(20, Math.max(0.25, radiusKm)))
+    setSupplyPlanningSelectionNotice(null)
+  }, [
+    setSupplyPlanningRadiusKm,
+    setSupplyPlanningSelectionNotice,
+    supplyPlanningActiveScenario,
+    supplyPlanningEditingScenarioId,
+  ])
+  const changeSupplyPlanningAllocation = useCallback(
+    (key: string, population: number) => {
+      setSupplyPlanningAllocations((current) => ({
+        ...current,
+        [key]: population,
+      }))
+    },
+    [setSupplyPlanningAllocations],
+  )
+  const liveSupplyPlanningAllocations = useMemo(
+    () =>
+      createSupplyPlanningScenarioAllocations(
+        supplyPlanningTanks,
+        supplyPlanningAllocations,
+      ),
+    [supplyPlanningAllocations, supplyPlanningTanks],
+  )
+  const liveSupplyPlanningResults = useMemo(
+    () =>
+      calculateSupplyPlanningResults(
+        supplyPlanningTanks,
+        liveSupplyPlanningAllocations,
+        supplyPlanningRadiusKm,
+      ),
+    [
+      liveSupplyPlanningAllocations,
+      supplyPlanningRadiusKm,
+      supplyPlanningTanks,
+    ],
+  )
+  const activeSupplyPlanningResults = useMemo<SupplyPlanningScenarioResults>(
+    () => {
+      if (!supplyPlanningActiveScenario) return liveSupplyPlanningResults
+      const tankResults = supplyPlanningActiveScenario.tankResults.map(
+        (result) => ({
+          tankId: result.tankId,
+          originalBalanceM3PerDay: Number(result.originalBalanceM3PerDay),
+          scenarioBalanceM3PerDay: Number(result.scenarioBalanceM3PerDay),
+          allocatedInM3PerDay: Number(result.allocatedInM3PerDay),
+          allocatedOutM3PerDay: Number(result.allocatedOutM3PerDay),
+        }),
+      )
+      const allocations = supplyPlanningActiveScenario.allocations.map(
+        (allocation) => ({
+          supplyingTankId: allocation.supplyingTankId,
+          receivingTankId: allocation.receivingTankId,
+          allocatedPopulation: allocation.allocatedPopulation,
+          allocatedWaterM3PerDay: Number(allocation.allocatedWaterM3PerDay),
+          distanceM: Number(allocation.distanceM),
+        }),
+      )
+      const totalAllocatedM3PerDay = allocations.reduce(
+        (total, allocation) => total + allocation.allocatedWaterM3PerDay,
+        0,
+      )
+      let fullyResolvedDeficits = 0
+      let partiallyResolvedDeficits = 0
+      let remainingDeficits = 0
+      for (const result of tankResults) {
+        if (result.originalBalanceM3PerDay >= 0) continue
+        if (result.scenarioBalanceM3PerDay >= -1e-8) {
+          fullyResolvedDeficits += 1
+        } else if (result.allocatedInM3PerDay > 0) {
+          partiallyResolvedDeficits += 1
+        } else {
+          remainingDeficits += 1
+        }
+      }
+      return {
+        allocations,
+        tankResults,
+        totalAllocatedM3PerDay,
+        fullyResolvedDeficits,
+        partiallyResolvedDeficits,
+        remainingDeficits,
+        invalidAllocation: false,
+      }
+    },
+    [liveSupplyPlanningResults, supplyPlanningActiveScenario],
+  )
+  const refreshSupplyPlanningScenarios = useCallback(async () => {
+    setSupplyPlanningSaveStatus("saving")
+    setSupplyPlanningSaveError(null)
+    try {
+      const { scenarios } = await getSupplyPlanningScenarios()
+      setSupplyPlanningScenarios(scenarios)
+      setSupplyPlanningSaveStatus("loaded")
+    } catch (error) {
+      setSupplyPlanningSaveError(
+        error instanceof Error
+          ? error.message
+          : "Unable to load saved planning scenarios.",
+      )
+      setSupplyPlanningSaveStatus("error")
+    }
+  }, [])
+  useEffect(() => {
+    if (supplyPlanningActive) {
+      void refreshSupplyPlanningScenarios()
+    }
+  }, [refreshSupplyPlanningScenarios, supplyPlanningActive])
+  const createSupplyPlanningInput = useCallback(
+    (name: string): SupplyPlanningScenarioInput => {
+      const map = mapInstance.current
+      const size = map?.getSize()
+      const extent =
+        map && size
+          ? map.getView().calculateExtent(size)
+          : null
+      return {
+        name: name.trim(),
+        description: supplyPlanningDraftDescription.trim() || null,
+        proximityThresholdM: supplyPlanningRadiusKm * 1000,
+        demandStandardLpd: 20,
+        mapState: {
+          extent: extent
+            ? [extent[0], extent[1], extent[2], extent[3]]
+            : null,
+          zoom: map?.getView().getZoom() ?? null,
+          campId: selectedCampId,
+          visibleCategories: activeCategories,
+        },
+        allocations: liveSupplyPlanningAllocations
+          .filter(
+            (allocation) =>
+              Number.isSafeInteger(allocation.allocatedPopulation) &&
+              allocation.allocatedPopulation > 0,
+          )
+          .map((allocation) => ({
+            supplyingTankId: allocation.supplyingTankId,
+            receivingTankId: allocation.receivingTankId,
+            allocatedPopulation: allocation.allocatedPopulation,
+          })),
+      }
+    },
+    [
+      selectedCampId,
+      activeCategories,
+      liveSupplyPlanningAllocations,
+      supplyPlanningDraftDescription,
+      supplyPlanningRadiusKm,
+    ],
+  )
+  const beginSupplyPlanningDraft = useCallback(() => {
+    setSupplyPlanningActiveScenario(null)
+    setSupplyPlanningSelectedScenarioId("")
+    setSupplyPlanningEditingScenarioId(null)
+    setSupplyPlanningDraftName("")
+    setSupplyPlanningDraftDescription("")
+    setSupplyPlanningRadiusKm(DEFAULT_SUPPLY_PLANNING_RADIUS_KM)
+    supplyPlanningReceiverIdsRef.current = []
+    setSupplyPlanningReceiverIds([])
+    setSupplyPlanningSupplierIds([])
+    setSupplyPlanningAllocations({})
+    setSupplyPlanningSelectedAllocation(null)
+    setSupplyPlanningSelectionNotice(null)
+    setSupplyPlanningSaveError(null)
+    setSupplyPlanningSaveStatus("idle")
+    setScenarioMapView(false)
+  }, [
+    setSupplyPlanningAllocations,
+    setSupplyPlanningReceiverIds,
+    setSupplyPlanningSupplierIds,
+  ])
+  const loadSupplyPlanningScenario = useCallback(
+    async (scenarioId: string) => {
+      setSupplyPlanningSaveStatus("loading")
+      setSupplyPlanningSaveError(null)
+      try {
+        const { scenario } = await getSupplyPlanningScenario(scenarioId)
+        setSupplyPlanningActiveScenario(scenario)
+        setSupplyPlanningSelectedScenarioId(scenario.id)
+        setSupplyPlanningEditingScenarioId(null)
+        setSupplyPlanningDraftName(scenario.name)
+        setSupplyPlanningDraftDescription(scenario.description ?? "")
+        setSupplyPlanningRadiusKm(Number(scenario.proximityThresholdM) / 1000)
+        const receiverIds = [
+          ...new Set(scenario.allocations.map((item) => item.receivingTankId)),
+        ]
+        const supplierIds = [
+          ...new Set(scenario.allocations.map((item) => item.supplyingTankId)),
+        ]
+        const allocations = Object.fromEntries(
+          scenario.allocations.map((item) => [
+            supplyPlanningAllocationKey(
+              item.supplyingTankId,
+              item.receivingTankId,
+            ),
+            item.allocatedPopulation,
+          ]),
+        )
+        supplyPlanningReceiverIdsRef.current = receiverIds
+        setSupplyPlanningReceiverIds(receiverIds)
+        setSupplyPlanningSupplierIds(supplierIds)
+        setSupplyPlanningAllocations(allocations)
+        setSupplyPlanningSelectedAllocation(null)
+            setScenarioMapView(true)
+        const view = mapInstance.current?.getView()
+        if (view) {
+          const savedMapState = scenario.mapState
+          if (savedMapState.extent) {
+            const [minX, minY, maxX, maxY] = savedMapState.extent
+            view.setCenter([(minX + maxX) / 2, (minY + maxY) / 2])
+          }
+          if (savedMapState.zoom !== null) view.setZoom(savedMapState.zoom)
+        }
+        if (scenario.mapState.visibleCategories.length > 0) {
+          const savedCategories = scenario.mapState.visibleCategories.filter(
+            (category): category is InfrastructureCategory =>
+              infrastructureCategories.some((item) => item.id === category),
+          )
+          setActiveCategories(savedCategories)
+        }
+        setSupplyPlanningSaveStatus("loaded")
+      } catch (error) {
+        setSupplyPlanningSaveError(
+          error instanceof Error
+            ? error.message
+            : "Unable to restore the saved scenario.",
+        )
+        setSupplyPlanningSaveStatus("error")
+      }
+    },
+    [
+      setActiveCategories,
+      setSupplyPlanningAllocations,
+      setSupplyPlanningReceiverIds,
+      setSupplyPlanningSupplierIds,
+    ],
+  )
+  const saveSupplyPlanningScenario = useCallback(async () => {
+    const name =
+      supplyPlanningDraftName.trim() ||
+      `Water supply scenario ${new Date().toLocaleDateString()}`
+    const input = createSupplyPlanningInput(name)
+    if (input.allocations.length === 0) {
+      setSupplyPlanningSaveError(
+        "Add at least one valid supplier-to-receiver allocation before saving.",
+      )
+      setSupplyPlanningSaveStatus("error")
+      return
+    }
+    setSupplyPlanningSaveStatus("loading")
+    setSupplyPlanningSaveError(null)
+    try {
+      const response = supplyPlanningEditingScenarioId
+        ? await updateSupplyPlanningScenario(
+            supplyPlanningEditingScenarioId,
+            input,
+          )
+        : await createSupplyPlanningScenario(input)
+      setSupplyPlanningActiveScenario(response.scenario)
+      setSupplyPlanningSelectedScenarioId(response.scenario.id)
+      setSupplyPlanningEditingScenarioId(null)
+      setSupplyPlanningDraftName(response.scenario.name)
+      setSupplyPlanningDraftDescription(response.scenario.description ?? "")
+      const { scenarios } = await getSupplyPlanningScenarios()
+      setSupplyPlanningScenarios(scenarios)
+      setSupplyPlanningSaveStatus("loaded")
+    } catch (error) {
+      setSupplyPlanningSaveError(
+        error instanceof Error
+          ? error.message
+          : "Unable to save the planning scenario.",
+      )
+      setSupplyPlanningSaveStatus("error")
+    }
+  }, [
+    createSupplyPlanningInput,
+    supplyPlanningDraftName,
+    supplyPlanningEditingScenarioId,
+  ])
+  const editSupplyPlanningScenario = useCallback(() => {
+    if (!supplyPlanningActiveScenario) return
+    const source = supplyPlanningActiveScenario
+    setSupplyPlanningEditingScenarioId(source.id)
+    setSupplyPlanningActiveScenario(null)
+    setSupplyPlanningSelectedScenarioId("")
+    setSupplyPlanningDraftName(source.name)
+    setSupplyPlanningDraftDescription(source.description ?? "")
+    setSupplyPlanningRadiusKm(Number(source.proximityThresholdM) / 1000)
+    setScenarioMapView(false)
+    setSupplyPlanningSaveStatus("idle")
+  }, [supplyPlanningActiveScenario])
+  const duplicateSupplyPlanningScenario = useCallback(() => {
+    if (!supplyPlanningActiveScenario) return
+    const source = supplyPlanningActiveScenario
+    setSupplyPlanningActiveScenario(null)
+    setSupplyPlanningSelectedScenarioId("")
+    setSupplyPlanningEditingScenarioId(null)
+    setSupplyPlanningDraftName(`${source.name} (copy)`)
+    setSupplyPlanningDraftDescription(source.description ?? "")
+    setSupplyPlanningRadiusKm(Number(source.proximityThresholdM) / 1000)
+    setScenarioMapView(false)
+    setSupplyPlanningSaveStatus("idle")
+  }, [supplyPlanningActiveScenario])
+  const renameSupplyPlanningActiveScenario = useCallback(async () => {
+    if (!supplyPlanningActiveScenario) return
+    const name = window.prompt(
+      "Rename this saved scenario",
+      supplyPlanningActiveScenario.name,
+    )
+    if (name === null || !name.trim()) return
+    setSupplyPlanningSaveStatus("loading")
+    setSupplyPlanningSaveError(null)
+    try {
+      await renameSupplyPlanningScenario(
+        supplyPlanningActiveScenario.id,
+        name.trim(),
+      )
+      const { scenario } = await getSupplyPlanningScenario(
+        supplyPlanningActiveScenario.id,
+      )
+      setSupplyPlanningActiveScenario(scenario)
+      setSupplyPlanningDraftName(scenario.name)
+      const { scenarios } = await getSupplyPlanningScenarios()
+      setSupplyPlanningScenarios(scenarios)
+      setSupplyPlanningSaveStatus("loaded")
+    } catch (error) {
+      setSupplyPlanningSaveError(
+        error instanceof Error ? error.message : "Unable to rename scenario.",
+      )
+      setSupplyPlanningSaveStatus("error")
+    }
+  }, [supplyPlanningActiveScenario])
+  const deleteSupplyPlanningActiveScenario = useCallback(async () => {
+    if (!supplyPlanningActiveScenario) return
+    if (
+      !window.confirm(
+        `Delete "${supplyPlanningActiveScenario.name}"? This cannot be undone.`,
+      )
+    ) {
+      return
+    }
+    setSupplyPlanningSaveStatus("loading")
+    setSupplyPlanningSaveError(null)
+    try {
+      await deleteSupplyPlanningScenario(supplyPlanningActiveScenario.id)
+      setSupplyPlanningScenarios((current) =>
+        current.filter(
+          (scenario) => scenario.id !== supplyPlanningActiveScenario.id,
+        ),
+      )
+      setSupplyPlanningActiveScenario(null)
+      setSupplyPlanningSelectedScenarioId("")
+      setScenarioMapView(false)
+      setSupplyPlanningSaveStatus("loaded")
+    } catch (error) {
+      setSupplyPlanningSaveError(
+        error instanceof Error ? error.message : "Unable to delete scenario.",
+      )
+      setSupplyPlanningSaveStatus("error")
+    }
+  }, [supplyPlanningActiveScenario])
+  const toggleSupplyPlanningComparison = useCallback((scenarioId: string) => {
+    setSupplyPlanningComparisonIds((current) =>
+      current.includes(scenarioId)
+        ? current.filter((id) => id !== scenarioId)
+        : current.length < 3
+          ? [...current, scenarioId]
+          : current,
+    )
+  }, [])
+  const cancelSupplyPlanningEdit = useCallback(() => {
+    if (supplyPlanningEditingScenarioId) {
+      void loadSupplyPlanningScenario(supplyPlanningEditingScenarioId)
+    } else {
+      beginSupplyPlanningDraft()
+    }
+  }, [
+    beginSupplyPlanningDraft,
+    loadSupplyPlanningScenario,
+    supplyPlanningEditingScenarioId,
+  ])
   const activeMapToolRef = useRef(activeMapTool)
   const isEmergencyAnalysisOpen = isPaneOpen("isochrone")
   const isPointAccessibilityOpen = isPaneOpen("accessibility")
@@ -1555,6 +2191,14 @@ function MapView() {
   }, [mapMode])
 
   useEffect(() => {
+    supplyPlanningActiveRef.current = supplyPlanningActive
+    supplyPlanningMapSelectRef.current = selectSupplyPlanningTankFromMap
+  }, [
+    selectSupplyPlanningTankFromMap,
+    supplyPlanningActive,
+  ])
+
+  useEffect(() => {
     activeMapToolRef.current = activeMapTool
   }, [activeMapTool])
 
@@ -1629,6 +2273,104 @@ function MapView() {
     map.addLayer(isochroneLayer)
     isochroneLayerRef.current = isochroneLayer
     isochroneLayer.setVisible(false)
+    const supplyPlanningLayer = new VectorLayer({
+      source: new VectorSource(),
+      style: (feature) => {
+        const role = feature.get("supplyPlanningRole")
+        const scenarioStatus = feature.get("scenarioStatus")
+        const color =
+          scenarioStatus === "resolved"
+            ? "#22c55e"
+            : scenarioStatus === "partial"
+              ? "#f59e0b"
+              : scenarioStatus === "remaining"
+                ? "#ef4444"
+                : role === "receiver"
+                  ? "#fb7185"
+                  : "#34d399"
+        const label =
+          role === "receiver"
+            ? "R"
+            : role === "supplier"
+              ? "S"
+              : Number.isFinite(Number(feature.get("scenarioBalance")))
+                ? Number(feature.get("scenarioBalance")).toFixed(1)
+                : ""
+        return new Style({
+          image: new CircleStyle({
+            radius: role ? 9 : 8,
+            fill: new Fill({ color }),
+            stroke: new Stroke({ color: "#f8fafc", width: 2.5 }),
+          }),
+          text: new Text({
+            text: label,
+            font: '700 10px "Oxanium Variable", sans-serif',
+            fill: new Fill({ color: "#0f172a" }),
+            offsetY: 0,
+          }),
+        })
+      },
+      zIndex: 37,
+      visible: false,
+    })
+    map.addLayer(supplyPlanningLayer)
+    supplyPlanningLayerRef.current = supplyPlanningLayer
+    const supplyPlanningConnectionsLayer = new VectorLayer({
+      source: new VectorSource(),
+      style: (feature) => {
+        const selected = feature.get("selectedAllocation") === true
+        const color = selected ? "#38bdf8" : "#c084fc"
+        if (feature.getGeometry()?.getType() === "Point") {
+          return new Style({
+            image: new RegularShape({
+              points: 3,
+              radius: 8,
+              rotation: Number(feature.get("rotation") ?? 0),
+              fill: new Fill({ color }),
+              stroke: new Stroke({ color: "#f8fafc", width: 1 }),
+            }),
+          })
+        }
+        return new Style({
+          stroke: new Stroke({
+            color,
+            width: selected ? 3 : 2,
+            lineDash: [8, 5],
+          }),
+          text: new Text({
+            text: `${Number(feature.get("allocatedWaterM3PerDay") ?? 0).toFixed(2)} m³/day`,
+            font: '600 11px "Oxanium Variable", sans-serif',
+            fill: new Fill({ color: "#f8fafc" }),
+            backgroundFill: new Fill({ color: "rgba(15, 23, 42, 0.88)" }),
+            padding: [3, 5, 3, 5],
+            placement: "line",
+          }),
+        })
+      },
+      zIndex: 38,
+      visible: false,
+    })
+    map.addLayer(supplyPlanningConnectionsLayer)
+    supplyPlanningConnectionsLayerRef.current = supplyPlanningConnectionsLayer
+    const supplyPlanningServiceAreasLayer = new VectorLayer({
+      source: new VectorSource(),
+      style: (feature) => {
+        const color =
+          feature.get("scenarioStatus") === "resolved"
+            ? "#22c55e"
+            : feature.get("scenarioStatus") === "partial"
+              ? "#f59e0b"
+              : "#ef4444"
+        return new Style({
+          fill: new Fill({ color: withOpacity(color, 0.14) }),
+          stroke: new Stroke({ color, width: 2.5, lineDash: [8, 5] }),
+        })
+      },
+      zIndex: 36,
+      visible: false,
+    })
+    map.addLayer(supplyPlanningServiceAreasLayer)
+    supplyPlanningServiceAreasLayerRef.current = supplyPlanningServiceAreasLayer
     const emergencyAreaLayer = new VectorLayer({
       source: new VectorSource(),
       style: new Style({
@@ -1857,6 +2599,40 @@ function MapView() {
       }
 
       const mapTool = activeMapToolRef.current
+      if (
+        supplyPlanningActiveRef.current &&
+        !["pan", "rectangle", "polygon", "measureDistance", "measureArea"].includes(
+          mapTool,
+        )
+      ) {
+        let tankId: string | null = null
+        map.forEachFeatureAtPixel(
+          event.pixel,
+          (feature, layer) => {
+            if (
+              String(layer?.get("table")).toLowerCase() !== "tanks" ||
+              !(feature instanceof Feature)
+            ) {
+              return undefined
+            }
+            tankId = featureIdentifier(feature, "tanks")
+            return feature
+          },
+          {
+            layerFilter: (layer) =>
+              String(layer.get("table")).toLowerCase() === "tanks",
+            hitTolerance: 12,
+          },
+        )
+        if (tankId) {
+          supplyPlanningMapSelectRef.current(tankId)
+        } else {
+          setSupplyPlanningSelectionNotice(
+            "Click a tank marker to choose a receiver or nearby supplier.",
+          )
+        }
+        return
+      }
       if (mapTool === "pan" || mapTool === "rectangle" || mapTool === "polygon" ||
           mapTool === "measureDistance" || mapTool === "measureArea") {
         return
@@ -2156,6 +2932,22 @@ function MapView() {
 
         if (disposed) return
 
+        if (layer.table.toLowerCase() === "tanks") {
+          const tankCoordinates = new Map<string, [number, number]>()
+          for (const feature of features) {
+            if (!(feature instanceof Feature)) continue
+            const tankId = featureIdentifier(feature, "tanks")
+            const projectedCoordinate = geometryCoordinate(feature)
+            if (!tankId || !projectedCoordinate) continue
+            const [longitude, latitude] = toLonLat(projectedCoordinate)
+            if (!Number.isFinite(longitude) || !Number.isFinite(latitude)) {
+              continue
+            }
+            tankCoordinates.set(tankId, [longitude, latitude])
+          }
+          setSupplyPlanningTankCoordinates(tankCoordinates)
+        }
+
         map.addLayer(vectorLayer)
         vectorLayer.set("schema", layer.schema)
         vectorLayer.set("table", layer.table)
@@ -2241,6 +3033,7 @@ function MapView() {
       mapLayersRef.current = {}
       connectionLayerRef.current = null
       serviceAreaLayerRef.current = null
+      supplyPlanningLayerRef.current = null
       selectedBoreholePulseRef.current = null
       hoveredConnectionRef.current = null
       hoveredServiceAreaRef.current = null
@@ -2695,6 +3488,204 @@ function MapView() {
   ])
 
   useEffect(() => {
+    const layer = supplyPlanningLayerRef.current
+    const source = layer?.getSource()
+    if (!layer || !source) return
+    source.clear(true)
+    layer.setVisible(supplyPlanningActive)
+    if (!supplyPlanningActive) return
+
+    const selectedRoles = new Map<string, "receiver" | "supplier">()
+    for (const tankId of supplyPlanningReceiverIds) {
+      selectedRoles.set(tankId, "receiver")
+    }
+    for (const tankId of supplyPlanningSupplierIds) {
+      selectedRoles.set(tankId, "supplier")
+    }
+    const tankLayer = Object.values(mapLayersRef.current).find(
+      (candidate) => String(candidate.get("table")).toLowerCase() === "tanks",
+    )
+    const features = (tankLayer?.getSource()?.getFeatures() ?? []).flatMap(
+      (feature) => {
+        if (!(feature instanceof Feature)) return []
+        const tankId = featureIdentifier(feature, "tanks") ?? ""
+        const role = selectedRoles.get(tankId)
+        const result = scenarioMapView
+          ? activeSupplyPlanningResults.tankResults.find(
+              (item) => item.tankId === tankId,
+            )
+          : undefined
+        if (!role && !result) return []
+        const selectedFeature = feature.clone()
+        if (role) selectedFeature.set("supplyPlanningRole", role, true)
+        if (result) {
+          selectedFeature.set("scenarioBalance", result.scenarioBalanceM3PerDay, true)
+          selectedFeature.set(
+            "scenarioStatus",
+            result.scenarioBalanceM3PerDay >= -1e-8
+              ? "resolved"
+              : result.allocatedInM3PerDay > 0
+                ? "partial"
+                : "remaining",
+            true,
+          )
+        }
+        return [selectedFeature]
+      },
+    )
+    source.addFeatures(features)
+  }, [
+    activeSupplyPlanningResults.tankResults,
+    layerStatuses,
+    scenarioMapView,
+    supplyPlanningActive,
+    supplyPlanningReceiverIds,
+    supplyPlanningSupplierIds,
+  ])
+
+  useEffect(() => {
+    const layer = supplyPlanningConnectionsLayerRef.current
+    const source = layer?.getSource()
+    if (!layer || !source) return
+    source.clear(true)
+    const visible =
+      supplyPlanningActive &&
+      scenarioMapView &&
+      supplyPlanningShowConnections
+    layer.setVisible(visible)
+    if (!visible) return
+    const selectedKey = supplyPlanningSelectedAllocation
+      ? supplyPlanningAllocationKey(
+          supplyPlanningSelectedAllocation.supplyingTankId,
+          supplyPlanningSelectedAllocation.receivingTankId,
+        )
+      : null
+    const features: Feature[] = []
+    for (const allocation of activeSupplyPlanningResults.allocations) {
+      const sourceCoordinates = supplyPlanningTankCoordinates.get(
+        allocation.supplyingTankId,
+      )
+      const targetCoordinates = supplyPlanningTankCoordinates.get(
+        allocation.receivingTankId,
+      )
+      if (!sourceCoordinates || !targetCoordinates) continue
+      const coordinates = [
+        fromLonLat(sourceCoordinates),
+        fromLonLat(targetCoordinates),
+      ]
+      const key = supplyPlanningAllocationKey(
+        allocation.supplyingTankId,
+        allocation.receivingTankId,
+      )
+      const line = new Feature({
+        geometry: new LineString(coordinates),
+        allocationKey: key,
+        allocatedWaterM3PerDay: allocation.allocatedWaterM3PerDay,
+      })
+      line.set("selectedAllocation", key === selectedKey, true)
+      features.push(line)
+      const start = coordinates[0]
+      const end = coordinates[1]
+      if (!start || !end) continue
+      const rotation =
+        Math.atan2(end[1] - start[1], end[0] - start[0]) + Math.PI / 2
+      const arrow = new Feature({
+        geometry: new Point(end),
+        allocationKey: key,
+        rotation,
+      })
+      arrow.set("selectedAllocation", key === selectedKey, true)
+      features.push(arrow)
+    }
+    source.addFeatures(features)
+  }, [
+    activeSupplyPlanningResults.allocations,
+    scenarioMapView,
+    supplyPlanningActive,
+    supplyPlanningSelectedAllocation,
+    supplyPlanningShowConnections,
+    supplyPlanningTankCoordinates,
+  ])
+
+  useEffect(() => {
+    const layer = supplyPlanningServiceAreasLayerRef.current
+    const source = layer?.getSource()
+    if (!layer || !source) return
+    source.clear(true)
+    const visible =
+      supplyPlanningActive &&
+      scenarioMapView &&
+      supplyPlanningShowServiceAreas &&
+      tankServiceAreas.status === "loaded"
+    layer.setVisible(visible)
+    if (!visible) return
+    const resultsByTank = new Map(
+      activeSupplyPlanningResults.tankResults.map((result) => [
+        result.tankId,
+        result,
+      ]),
+    )
+    const features: Feature[] = []
+    for (const spatialLayer of Object.values(mapLayersRef.current)) {
+      const table = String(spatialLayer.get("table") ?? "")
+      const isInSelectedCamp =
+        selectedCamp?.tables.some(
+          (campTable) => campTable.toLowerCase() === table.toLowerCase(),
+        ) ?? false
+      if (selectedCampId !== "all" && !isInSelectedCamp) continue
+      for (const feature of spatialLayer.getSource()?.getFeatures() ?? []) {
+        if (!(feature instanceof Feature)) continue
+        const geometry = feature.getGeometry()
+        if (
+          !geometry ||
+          !["Polygon", "MultiPolygon"].includes(geometry.getType())
+        ) {
+          continue
+        }
+        const serviceCode = normalizedId(feature.get("service_code"))
+        const groups = serviceCode
+          ? tankServiceAreas.byServiceCode.get(serviceCode)
+          : undefined
+        if (!groups?.length) continue
+        const associatedResults = groups.flatMap((group) => {
+          const result = resultsByTank.get(group.tankId)
+          return result ? [result] : []
+        })
+        if (associatedResults.length === 0) continue
+        const hasPartial = associatedResults.some(
+          (result) =>
+            result.originalBalanceM3PerDay < 0 &&
+            result.scenarioBalanceM3PerDay < -1e-8 &&
+            result.allocatedInM3PerDay > 0,
+        )
+        const hasRemaining = associatedResults.some(
+          (result) =>
+            result.originalBalanceM3PerDay < 0 &&
+            result.scenarioBalanceM3PerDay < -1e-8,
+        )
+        const overlay = feature.clone()
+        overlay.set(
+          "scenarioStatus",
+          hasPartial ? "partial" : hasRemaining ? "remaining" : "resolved",
+          true,
+        )
+        features.push(overlay)
+      }
+    }
+    source.addFeatures(features)
+  }, [
+    activeSupplyPlanningResults.tankResults,
+    layerStatuses,
+    scenarioMapView,
+    selectedCamp,
+    selectedCampId,
+    supplyPlanningActive,
+    supplyPlanningShowServiceAreas,
+    tankServiceAreas.byServiceCode,
+    tankServiceAreas.status,
+  ])
+
+  useEffect(() => {
     for (const metadata of layers) {
       const vectorLayer = mapLayersRef.current[metadata.id]
       if (!vectorLayer) continue
@@ -2705,6 +3696,7 @@ function MapView() {
         const categoryIsVisible =
           (activeCategories.includes(category) ||
             (mapMode === "tapStatus" && category === "taps") ||
+          (supplyPlanningActive && category === "tanks") ||
           ((tankServiceAreasActive || waterBalanceActive) &&
             category === "tanks")) ||
           Boolean(
@@ -2767,6 +3759,7 @@ function MapView() {
     layers,
     selectedCamp,
     selectedCampId,
+    supplyPlanningActive,
     tankServiceAreas.tanks,
     tankServiceAreasActive,
     waterBalanceActive,
@@ -3237,6 +4230,81 @@ function MapView() {
               tankCount={waterBalanceTankCount}
             />
           ),
+          supplyByPlanningUnit: (
+            <SupplyByPlanningPanel
+              allocations={supplyPlanningAllocations}
+              error={waterBalances.error}
+              activeScenario={supplyPlanningActiveScenario}
+              comparisonIds={supplyPlanningComparisonIds}
+              draftDescription={supplyPlanningDraftDescription}
+              draftName={supplyPlanningDraftName}
+              editingScenarioId={supplyPlanningEditingScenarioId}
+              onCreateDraft={beginSupplyPlanningDraft}
+              onDeleteScenario={() => void deleteSupplyPlanningActiveScenario()}
+              onDraftDescriptionChange={setSupplyPlanningDraftDescription}
+              onDraftNameChange={setSupplyPlanningDraftName}
+              onDuplicateScenario={duplicateSupplyPlanningScenario}
+              onEditScenario={editSupplyPlanningScenario}
+              onLoadScenario={() =>
+                void loadSupplyPlanningScenario(supplyPlanningSelectedScenarioId)
+              }
+              onRenameScenario={() =>
+                void renameSupplyPlanningActiveScenario()
+              }
+              onSaveScenario={() => void saveSupplyPlanningScenario()}
+              onSelectScenario={setSupplyPlanningSelectedScenarioId}
+              onToggleComparison={toggleSupplyPlanningComparison}
+              onToggleScenarioMap={setScenarioMapView}
+              onToggleAllocationConnections={setSupplyPlanningShowConnections}
+              onToggleScenarioServiceAreas={setSupplyPlanningShowServiceAreas}
+              onSelectTankResult={(tankId) => {
+                const coordinates = supplyPlanningTankCoordinates.get(tankId)
+                if (coordinates) {
+                  mapInstance.current?.getView().animate({
+                    center: fromLonLat(coordinates),
+                    zoom: Math.max(mapInstance.current?.getView().getZoom() ?? 0, 14),
+                    duration: 300,
+                  })
+                }
+              }}
+              onSelectAllocation={(index) =>
+                setSupplyPlanningSelectedAllocation(
+                  activeSupplyPlanningResults.allocations[index] ?? null,
+                )
+              }
+              onAllocationChange={changeSupplyPlanningAllocation}
+              onClear={
+                supplyPlanningEditingScenarioId
+                  ? cancelSupplyPlanningEdit
+                  : beginSupplyPlanningDraft
+              }
+              onRadiusChange={changeSupplyPlanningRadius}
+              onToggleReceiver={toggleSupplyPlanningReceiver}
+              onToggleSupplier={toggleSupplyPlanningSupplier}
+              radiusKm={supplyPlanningRadiusKm}
+              receiverIds={supplyPlanningReceiverIds}
+              results={activeSupplyPlanningResults}
+              saveError={supplyPlanningSaveError}
+              saveStatus={supplyPlanningSaveStatus}
+              scenarios={supplyPlanningScenarios}
+              scenarioMapView={scenarioMapView}
+              selectedScenarioId={supplyPlanningSelectedScenarioId}
+              selectionNotice={supplyPlanningSelectionNotice}
+              showAllocationConnections={supplyPlanningShowConnections}
+              showScenarioServiceAreas={supplyPlanningShowServiceAreas}
+              supplierIds={supplyPlanningSupplierIds}
+              status={waterBalances.status}
+              tanks={supplyPlanningTanks}
+              tankLayerStatus={
+                layerStatuses[
+                  layers.find(
+                    (layer) => layer.table.toLowerCase() === "tanks",
+                  )?.id ?? ""
+                ] ?? "loading"
+              }
+              tankServiceGroups={tankServiceAreas.byTankId}
+            />
+          ),
           isochrone: (
             <EmergencyWaterAccessibilityPanel
               emergencyArea={emergencyArea}
@@ -3395,6 +4463,7 @@ function MapView() {
           infrastructureDetails: closeInfrastructureCard,
           isochrone: exitEmergencyAccessibility,
           accessibility: exitPointAccessibility,
+          supplyByPlanningUnit: clearSupplyPlanningScenario,
         }}
       />
 

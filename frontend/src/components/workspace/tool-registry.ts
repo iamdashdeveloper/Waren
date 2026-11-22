@@ -183,7 +183,7 @@ export const toolRegistry: ToolDefinition[] = [
     ["waterBalance", "Water Balance", "Water Balance", RiNodeTree, "medium"],
     ["supplyDemand", "Supply / Demand", "Water Balance", RiContrastDrop2Line, "small"],
     ["deficiency", "Deficiency", "Water Balance", RiFocus3Line, "small"],
-    ["supplyByPlanningUnit", "Supply by Planning Unit", "Water Balance", RiMapPin2Line, "small"],
+    ["supplyByPlanningUnit", "Supply by Planning", "Water Balance", RiMapPin2Line, "small"],
     ["accessibility", "Accessibility", "Accessibility", RiMapPin2Line, "medium"],
     [
       "isochrone",
@@ -202,6 +202,8 @@ export const toolRegistry: ToolDefinition[] = [
     description:
       id === "waterBalance"
         ? "Color service areas by linked tank water supply in liters per person per day."
+        : id === "supplyByPlanningUnit"
+          ? "Explore temporary population allocations from nearby surplus tanks to a deficient tank."
         : id === "isochrone"
           ? "Identify alternatives and pedestrian coverage for an affected service area."
           : id === "accessibility"
@@ -215,6 +217,8 @@ export const toolRegistry: ToolDefinition[] = [
       ? { paneRegion: "left" as const }
       : id === "isochrone" || id === "accessibility"
         ? { paneRegion: "right" as const }
+        : id === "supplyByPlanningUnit"
+          ? { paneRegion: "overlay" as const }
       : { comingSoon: true }),
   })),
 

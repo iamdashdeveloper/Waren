@@ -228,6 +228,39 @@ function GuidedTour() {
         },
       },
       {
+        element: '[data-tour="supply-planning-tool"]',
+        popover: {
+          title: "Try a temporary supply scenario 🧮",
+          description:
+            "Supply by Planning compares a tank with a recorded deficit against nearby tanks with a recorded surplus. Choose Next to explore a client-only scenario—no data is saved or changed.",
+          side: "bottom" as const,
+          onNextClick: (_element, _step, { driver: activeDriver }) => {
+            if (
+              !document.querySelector(
+                '[aria-label="Supply by Planning pane"]',
+              )
+            ) {
+              togglePane("supplyByPlanningUnit")
+            }
+            activeDriver.moveNext()
+          },
+        },
+      },
+      {
+        element: '[aria-label="Supply by Planning pane"]',
+        waitForElement: 2000,
+        popover: {
+          title: "Compare possible allocations 📍",
+          description:
+            "Pick a negative-balance receiver, keep the default 2 km radius or adjust it, then add nearby positive-balance suppliers and allocate people. The check uses recorded water_balance values and straight-line distance only; it does not establish operational or hydraulic feasibility.",
+          side: "left" as const,
+          onNextClick: (_element, _step, { driver: activeDriver }) => {
+            closePane("supplyByPlanningUnit")
+            activeDriver.moveNext()
+          },
+        },
+      },
+      {
         element: '[data-tour="emergency-water-tool"]',
         popover: {
           title: "Plan for water-point outages 🚰",

@@ -65,6 +65,77 @@ export type TankWaterBalance = {
   waterSupply: number | null
   waterSupplyPopulation: number | null
   waterDemand: number | null
+  waterBalance: number | null
+}
+
+export type SupplyPlanningMapState = {
+  extent: [number, number, number, number] | null
+  zoom: number | null
+  campId: string
+  visibleCategories: string[]
+}
+
+export type SupplyPlanningAllocation = {
+  supplyingTankId: string
+  receivingTankId: string
+  allocatedPopulation: number
+  allocatedWaterM3PerDay: number | string
+  distanceM: number | string
+}
+
+export type SupplyPlanningTankResult = {
+  tankId: string
+  originalBalanceM3PerDay: number | string
+  scenarioBalanceM3PerDay: number | string
+  allocatedInM3PerDay: number | string
+  allocatedOutM3PerDay: number | string
+}
+
+export type SupplyPlanningScenarioSummary = {
+  id: string
+  name: string
+  description: string | null
+  proximityThresholdM: number | string
+  demandStandardLpd: number | string
+  scenarioStatus: "saved"
+  calculatedAt: string
+  sourceDataTimestamp: string
+  calculationVersion: string
+  mapState: SupplyPlanningMapState
+  createdAt: string
+  updatedAt: string
+  totalAllocatedM3PerDay: number | string
+  supplyingTankCount: number
+  receivingTankCount: number
+  fullyResolvedDeficits: number
+  partiallyResolvedDeficits: number
+  remainingDeficits: number
+}
+
+export type SupplyPlanningScenario = Omit<
+  SupplyPlanningScenarioSummary,
+  | "totalAllocatedM3PerDay"
+  | "supplyingTankCount"
+  | "receivingTankCount"
+  | "fullyResolvedDeficits"
+  | "partiallyResolvedDeficits"
+  | "remainingDeficits"
+> & {
+  allocations: SupplyPlanningAllocation[]
+  tankResults: SupplyPlanningTankResult[]
+}
+
+export type SupplyPlanningScenarioInput = {
+  name: string
+  description: string | null
+  proximityThresholdM: number
+  demandStandardLpd: 20
+  mapState: SupplyPlanningMapState
+  allocations: {
+    supplyingTankId: string
+    receivingTankId: string
+    allocatedPopulation: number
+  }[]
 }
 
 export type EmergencyWaterPoint = {
@@ -463,6 +534,7 @@ const waterSupplyPopulationColumnNames = new Set([
   "supplypopulation",
 ])
 const waterDemandColumnNames = new Set(["waterdemand"])
+const waterBalanceColumnNames = new Set(["waterbalance"])
 
 export async function getTankWaterSupply(
   signal?: AbortSignal,
@@ -493,6 +565,11 @@ export async function getTankWaterSupply(
         table.columns,
         waterDemandColumnNames,
         /^waterdemand$/,
+      ),
+      waterBalance: findColumn(
+        table.columns,
+        waterBalanceColumnNames,
+        /^waterbalance$/,
       ),
     }]
   })
@@ -538,6 +615,9 @@ export async function getTankWaterSupply(
           : null,
         waterDemand: candidate.waterDemand
           ? numericValue(row[candidate.waterDemand])
+          : null,
+        waterBalance: candidate.waterBalance
+          ? numericValue(row[candidate.waterBalance])
           : null,
       })
     }
@@ -586,4 +666,75 @@ export function getSpatialLayers(signal?: AbortSignal) {
 
 export function getCamps(signal?: AbortSignal) {
   return request<{ camps: CampContext[] }>("/data/camps", signal)
+}
+
+const supplyPlanningScenariosPath = "/analysis/supply-planning/scenarios"
+
+export function getSupplyPlanningScenarios(signal?: AbortSignal) {
+  return request<{ scenarios: SupplyPlanningScenarioSummary[] }>(
+    supplyPlanningScenariosPath,
+    signal,
+  )
+}
+
+export function getSupplyPlanningScenario(
+  scenarioId: string,
+  signal?: AbortSignal,
+) {
+  return request<{ scenario: SupplyPlanningScenario }>(
+    `${supplyPlanningScenariosPath}/${encodeURIComponent(scenarioId)}`,
+    signal,
+  )
+}
+
+export function createSupplyPlanningScenario(
+  scenario: SupplyPlanningScenarioInput,
+) {
+  return request<{ scenario: SupplyPlanningScenario }>(
+    supplyPlanningScenariosPath,
+    undefined,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(scenario),
+    },
+  )
+}
+
+export function updateSupplyPlanningScenario(
+  scenarioId: string,
+  scenario: SupplyPlanningScenarioInput,
+) {
+  return request<{ scenario: SupplyPlanningScenario }>(
+    `${supplyPlanningScenariosPath}/${encodeURIComponent(scenarioId)}`,
+    undefined,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(scenario),
+    },
+  )
+}
+
+export function renameSupplyPlanningScenario(
+  scenarioId: string,
+  name: string,
+) {
+  return request<{ scenario: Pick<SupplyPlanningScenarioSummary, "id" | "name" | "updatedAt"> }>(
+    `${supplyPlanningScenariosPath}/${encodeURIComponent(scenarioId)}`,
+    undefined,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    },
+  )
+}
+
+export function deleteSupplyPlanningScenario(scenarioId: string) {
+  return request<{ deleted: true }>(
+    `${supplyPlanningScenariosPath}/${encodeURIComponent(scenarioId)}`,
+    undefined,
+    { method: "DELETE" },
+  )
 }

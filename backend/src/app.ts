@@ -5,6 +5,7 @@ import { pool } from "./db/client.js"
 import { dataRoutes } from "./routes/data.js"
 import { healthRoutes } from "./routes/health.js"
 import { analysisRoutes } from "./routes/analysis.js"
+import { supplyPlanningRoutes } from "./routes/supply-planning.js"
 import { SpatialDataError } from "./services/data.js"
 
 export function buildApp() {
@@ -16,6 +17,7 @@ export function buildApp() {
   app.register(healthRoutes)
   app.register(dataRoutes)
   app.register(analysisRoutes)
+  app.register(supplyPlanningRoutes)
 
   app.setErrorHandler((error: FastifyError, request, reply) => {
     if (error instanceof SpatialDataError) {
