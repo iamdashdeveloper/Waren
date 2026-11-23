@@ -763,7 +763,6 @@ function createStyle(
   }
 
   const normalStyles = createFeatureStyles(1, false)
-  const mutedStyles = createFeatureStyles(0.14, false)
   const emphasizedStyles = createFeatureStyles(1, true)
   const tankStyles = new Map<string, Style>()
   const tapStatusStyles = new Map<string, Style>()
@@ -804,7 +803,7 @@ function createStyle(
     if (category === "tanks" && serviceAreasActive) {
       const tankId = featureIdentifier(feature, "tanks")
       const color = tankId ? tankColors.get(tankId) : undefined
-      if (!tankId || !color) return mutedStyles.point
+      if (!tankId || !color) return normalStyles.point
       let style = tankStyles.get(tankId)
       if (!style) {
         style = new Style({
@@ -833,13 +832,7 @@ function createStyle(
             : connectedTankIds.has(id ?? "")
       }
     }
-    const styles = serviceAreasActive
-      ? mutedStyles
-      : connectionView
-      ? prominent
-        ? emphasizedStyles
-        : mutedStyles
-      : normalStyles
+    const styles = connectionView && prominent ? emphasizedStyles : normalStyles
     let labelStyle: Style | undefined
     if (prominent && pointType) {
       const identifier = featureIdentifier(feature, pointType)

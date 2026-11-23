@@ -22,24 +22,27 @@ function TankServiceAreasPanel({
   selected,
 }: TankServiceAreasPanelProps) {
   return (
-    <div aria-label="Tank Service Areas legend" className="space-y-2">
+    <div
+      aria-label="Tank Service Areas legend"
+      className="flex h-full min-h-0 flex-col"
+    >
       {status === "loading" && (
-        <p className="text-[10px] text-muted-foreground" role="status">
+        <p className="shrink-0 text-[10px] text-muted-foreground" role="status">
           Loading tank service areas…
         </p>
       )}
       {status === "error" && (
-        <p className="text-[10px] text-destructive" role="alert">
+        <p className="shrink-0 text-[10px] text-destructive" role="alert">
           {error ?? "Unable to load tank service areas."}
         </p>
       )}
       {status === "loaded" && tanks.length === 0 && (
-        <p className="text-[10px] text-muted-foreground" role="status">
+        <p className="shrink-0 text-[10px] text-muted-foreground" role="status">
           No tank service-area relationships are recorded.
         </p>
       )}
       {status === "loaded" && tanks.length > 0 && (
-        <ul className="max-h-[min(34dvh,280px)] space-y-1 overflow-y-auto">
+        <ul className="min-h-0 flex-1 space-y-1 overflow-y-auto">
           {tanks.map((tank) => (
             <li
               className="flex items-center justify-between gap-3 text-[10px] text-muted-foreground"
@@ -62,7 +65,7 @@ function TankServiceAreasPanel({
         </ul>
       )}
       {selected && (
-        <div className="border-t border-border pt-2.5" role="status">
+        <div className="mt-2.5 shrink-0 border-t border-border pt-2.5" role="status">
           <p className="text-[10px] font-medium text-foreground">
             Service area {selected.serviceCode}
           </p>

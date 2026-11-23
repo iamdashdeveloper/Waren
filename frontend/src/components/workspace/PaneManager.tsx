@@ -239,7 +239,11 @@ function PaneManager({ content, onClose = {} }: PaneManagerProps) {
       right: maximized ? 0 : undefined,
       bottom: maximized ? 0 : undefined,
       width: maximized ? "auto" : layout.width,
-      height: maximized ? "auto" : collapsed ? 38 : layout.height,
+      height: maximized
+        ? "auto"
+        : collapsed
+          ? 38
+          : layout.height ?? (pane.toolId === "tankServiceAreas" ? 460 : undefined),
       minWidth: maximized
         ? undefined
         : Math.min(260, Math.max(180, workspaceSize.width - 24)),
@@ -414,7 +418,8 @@ function PaneManager({ content, onClose = {} }: PaneManagerProps) {
         {!collapsed && (
           <CardContent
             className={
-              pane.toolId === "boreholeTankSankey"
+              pane.toolId === "boreholeTankSankey" ||
+              pane.toolId === "tankServiceAreas"
                 ? "flex min-h-0 flex-1 flex-col overflow-hidden p-3"
                 : "min-h-0 overflow-y-auto p-3"
             }
