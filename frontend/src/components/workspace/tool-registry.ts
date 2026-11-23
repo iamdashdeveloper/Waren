@@ -33,6 +33,7 @@ export type PaneRegion =
   | "bottomLeft"
   | "bottomRight"
   | "bottomCenter"
+  | "sankey"
   | "overlay"
 export type RibbonTabId =
   | "map"
@@ -69,6 +70,7 @@ export type ToolId =
   | "boreholes"
   | "taps"
   | "connections"
+  | "boreholeTankSankey"
   | "tankServiceAreas"
   | "resetView"
   | "toggleFullscreen"
@@ -260,6 +262,16 @@ export const toolRegistry: ToolDefinition[] = [
     group: "Network",
     icon: RiNodeTree,
     action: "connections",
+    size: "medium",
+  },
+  {
+    id: "boreholeTankSankey",
+    label: "Borehole–Tank Connection",
+    description: "Show recorded borehole-to-tank supply connections as a Sankey diagram.",
+    tab: "infrastructure",
+    group: "Network",
+    icon: RiNodeTree,
+    paneRegion: "sankey",
     size: "medium",
   },
   {

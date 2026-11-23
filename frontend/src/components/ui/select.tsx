@@ -14,6 +14,8 @@ type SelectProps = {
   onValueChange: (value: string) => void
   "aria-label": string
   className?: string
+  popupClassName?: string
+  positionerClassName?: string
 }
 
 function Select({
@@ -21,6 +23,8 @@ function Select({
   options,
   onValueChange,
   className,
+  popupClassName,
+  positionerClassName,
   ...props
 }: SelectProps) {
   const groups = Array.from(new Set(options.map((option) => option.group ?? "")))
@@ -46,8 +50,15 @@ function Select({
         </SelectPrimitive.Icon>
       </SelectPrimitive.Trigger>
       <SelectPrimitive.Portal>
-        <SelectPrimitive.Positioner alignItemWithTrigger={false} sideOffset={4}>
-          <SelectPrimitive.Popup className="z-[var(--waren-z-dropdown)] min-w-[220px] max-w-[min(320px,calc(100vw-2rem))] border bg-popover p-1 text-popover-foreground shadow-lg outline-none">
+        <SelectPrimitive.Positioner
+          alignItemWithTrigger={false}
+          className={positionerClassName}
+          sideOffset={4}
+        >
+          <SelectPrimitive.Popup className={cn(
+            "z-[var(--waren-z-dropdown)] min-w-[220px] max-w-[min(320px,calc(100vw-2rem))] border bg-popover p-1 text-popover-foreground shadow-lg outline-none",
+            popupClassName,
+          )}>
             <SelectPrimitive.List className="max-h-[min(65dvh,420px)] overflow-y-auto">
               {groups.map((group, groupIndex) => {
                 const groupOptions = options.filter(

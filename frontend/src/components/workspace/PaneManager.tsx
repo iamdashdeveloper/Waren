@@ -1,4 +1,5 @@
 import {
+  RiFullscreenLine,
   RiAddLine,
   RiCloseLine,
   RiSubtractLine,
@@ -37,6 +38,7 @@ const defaultLayouts: Record<PaneRegion, PaneLayout> = {
   overlay: { x: 240, y: 180, width: 360 },
   bottomLeft: { x: 16, y: 96, width: 320 },
   bottomCenter: { x: 16, y: 16, width: 320 },
+  sankey: { x: 16, y: 16, width: 760, height: 620 },
   bottomRight: { x: 16, y: 16, width: 320 },
 }
 
@@ -52,7 +54,8 @@ function defaultLayout(
     toolId === "layers" ||
     toolId === "find"
   const isRight = region === "right" || region === "bottom" ||
-    region === "bottomCenter" || region === "bottomRight"
+    region === "bottomCenter" || region === "bottomRight" ||
+    region === "sankey"
   if (containerWidth < 640) {
     return {
       x: 12,
@@ -110,6 +113,9 @@ type PaneManagerProps = {
 function PaneManager({ content, onClose = {} }: PaneManagerProps) {
   const { panes, closePane } = useWorkspace()
   const [layouts, setLayouts] = useState<Partial<Record<PaneRegion, PaneLayout>>>(() => readLayouts())
+  const [maximizedRegions, setMaximizedRegions] = useState<Set<PaneRegion>>(
+    () => new Set(),
+  )
   const [frontRegion, setFrontRegion] = useState<PaneRegion | null>(null)
   const [workspaceSize, setWorkspaceSize] = useState({ width: window.innerWidth, height: window.innerHeight })
   const workspaceRef = useRef<HTMLDivElement>(null)
@@ -168,6 +174,7 @@ function PaneManager({ content, onClose = {} }: PaneManagerProps) {
 
   const resetLayout = () => {
     setLayouts({})
+    setMaximizedRegions(new Set())
     try {
       localStorage.removeItem(layoutStorageKey)
     } catch {
@@ -214,24 +221,41 @@ function PaneManager({ content, onClose = {} }: PaneManagerProps) {
 
     const close = () => {
       onClose[pane.toolId]?.()
+      setMaximizedRegions((current) => {
+        if (!current.has(region)) return current
+        const next = new Set(current)
+        next.delete(region)
+        return next
+      })
       closePane(pane.toolId)
     }
     const layout = getLayout(region, pane.toolId)
     const collapsed = pane.collapsed || layout.collapsed
+    const maximized = maximizedRegions.has(region)
     const style: CSSProperties = {
-      left: layout.x,
-      top: layout.y,
-      width: layout.width,
-      height: collapsed ? 38 : layout.height,
-      minWidth: Math.min(260, Math.max(180, workspaceSize.width - 24)),
+      position: maximized ? "fixed" : "absolute",
+      left: maximized ? 0 : layout.x,
+      top: maximized ? 0 : layout.y,
+      right: maximized ? 0 : undefined,
+      bottom: maximized ? 0 : undefined,
+      width: maximized ? "auto" : layout.width,
+      height: maximized ? "auto" : collapsed ? 38 : layout.height,
+      minWidth: maximized
+        ? undefined
+        : Math.min(260, Math.max(180, workspaceSize.width - 24)),
       minHeight: collapsed ? 38 : undefined,
-      maxWidth: "calc(100vw - 24px)",
-      maxHeight: Math.max(
-        140,
-        Math.min(window.innerHeight * 0.72, workspaceSize.height - layout.y - 12),
-      ),
-      zIndex: frontRegion === region ? 90 : 50,
-      resize: collapsed ? "none" : "both",
+      maxWidth: maximized ? undefined : "calc(100vw - 24px)",
+      maxHeight: maximized
+        ? undefined
+        : Math.max(
+            140,
+            Math.min(
+              window.innerHeight * (pane.toolId === "boreholeTankSankey" ? 0.86 : 0.72),
+              workspaceSize.height - layout.y - 12,
+            ),
+          ),
+      zIndex: maximized ? 200 : frontRegion === region ? 90 : 50,
+      resize: collapsed || maximized ? "none" : "both",
     }
 
     const startDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -339,10 +363,36 @@ function PaneManager({ content, onClose = {} }: PaneManagerProps) {
             >
               Reset
             </Button>
+            {!collapsed && (
+              <Button
+                aria-label={`${maximized ? "Restore" : "Maximize"} ${tool.label}`}
+                aria-pressed={maximized}
+                className="size-6 text-muted-foreground"
+                onClick={() =>
+                  setMaximizedRegions((current) => {
+                    const next = new Set(current)
+                    if (next.has(region)) next.delete(region)
+                    else next.add(region)
+                    return next
+                  })
+                }
+                size="icon-xs"
+                variant="ghost"
+              >
+                <RiFullscreenLine className="size-3" />
+              </Button>
+            )}
             <Button
               aria-label={`${collapsed ? "Expand" : "Collapse"} ${tool.label}`}
               className="size-6 text-muted-foreground"
               onClick={() => {
+                if (!collapsed && maximized) {
+                  setMaximizedRegions((current) => {
+                    const next = new Set(current)
+                    next.delete(region)
+                    return next
+                  })
+                }
                 updateLayout(region, { collapsed: !collapsed })
               }}
               size="icon-xs"
@@ -362,7 +412,13 @@ function PaneManager({ content, onClose = {} }: PaneManagerProps) {
           </div>
         </CardHeader>
         {!collapsed && (
-          <CardContent className="min-h-0 overflow-y-auto p-3">
+          <CardContent
+            className={
+              pane.toolId === "boreholeTankSankey"
+                ? "flex min-h-0 flex-1 flex-col overflow-hidden p-3"
+                : "min-h-0 overflow-y-auto p-3"
+            }
+          >
             {body}
           </CardContent>
         )}

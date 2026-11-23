@@ -28,6 +28,7 @@ import { apply } from "ol-mapbox-style"
 import InfrastructureDetailsCard, {
   type InfrastructureDetails,
 } from "@/components/map/InfrastructureDetailsCard"
+import BoreholeTankSankeyPanel from "@/components/map/BoreholeTankSankeyPanel"
 import InfrastructureSummary from "@/components/dashboard/InfrastructureSummary"
 import type { InfrastructureMetrics } from "@/components/dashboard/InfrastructureSummary"
 import LayerControl from "@/components/map/LayerControl"
@@ -115,6 +116,8 @@ const CARTO_DARK_STYLE =
   "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
 const geoJSONFormat = new GeoJSON()
 const waterBalanceTargetLitresPerPersonPerDay = 20
+// Snap near-boundary point records to a camp without assigning distant outliers.
+const campBoundarySnapDistanceMeters = 300
 const waterBalanceColors: Record<WaterBalanceStatus, string> = {
   adequate: "#22c55e",
   warning: "#eab308",
@@ -362,6 +365,114 @@ function resolveConnections(
     connections.push({ boreholeId, tankId, amount })
   }
   return connections
+}
+
+async function loadTankCampAssignments(
+  camps: CampContext[],
+  layers: MapLayer[],
+  signal: AbortSignal,
+): Promise<Record<string, string>> {
+  const tankLayers = layers.filter(
+    (layer) => infrastructureCategory(layer) === "tanks",
+  )
+  if (tankLayers.length === 0) {
+    throw new Error("The tank spatial layer could not be identified.")
+  }
+
+  const campLayers = camps.map((camp) => {
+    const matches = layers.filter((layer) => camp.tables.includes(layer.table))
+    if (matches.length === 0) {
+      throw new Error(`No boundary layers were found for ${camp.name}.`)
+    }
+    return { campId: camp.id, layers: matches }
+  })
+
+  const [tankCollections, campCollections] = await Promise.all([
+    Promise.all(
+      tankLayers.map((layer) =>
+        getSpatialLayerGeoJSON(
+          layer.table,
+          {
+            schema: layer.schema,
+            geometryColumn: layer.geometryColumn,
+          },
+          signal,
+        ),
+      ),
+    ),
+    Promise.all(
+      campLayers.map(async ({ campId, layers: boundaries }) => ({
+        campId,
+        features: (
+          await Promise.all(
+            boundaries.map((layer) =>
+              getSpatialLayerGeoJSON(
+                layer.table,
+                {
+                  schema: layer.schema,
+                  geometryColumn: layer.geometryColumn,
+                },
+                signal,
+              ),
+            ),
+          )
+        ).flatMap((collection) =>
+          geoJSONFormat.readFeatures(collection, {
+            dataProjection: "EPSG:4326",
+            featureProjection: "EPSG:3857",
+          }),
+        ),
+      })),
+    ),
+  ])
+  const tankFeatures = tankCollections.flatMap((collection) =>
+    geoJSONFormat.readFeatures(collection, {
+      dataProjection: "EPSG:4326",
+      featureProjection: "EPSG:3857",
+    }),
+  )
+  const assignments: Record<string, string> = {}
+
+  for (const tank of tankFeatures) {
+    const tankId = normalizedId(tank.get("id"))
+    const geometry = tank.getGeometry()
+    if (!tankId || !(geometry instanceof Point)) continue
+    const coordinate = geometry.getCoordinates()
+    let nearestCampId: string | null = null
+    let nearestDistance = Infinity
+    for (const camp of campCollections) {
+      let isInsideCamp = false
+      for (const boundary of camp.features) {
+        const boundaryGeometry = boundary.getGeometry()
+        if (!boundaryGeometry) continue
+        if (boundaryGeometry.intersectsCoordinate(coordinate)) {
+          isInsideCamp = true
+          break
+        }
+        const closestPoint = boundaryGeometry.getClosestPoint(coordinate)
+        const distance = Math.hypot(
+          coordinate[0] - closestPoint[0],
+          coordinate[1] - closestPoint[1],
+        )
+        if (distance < nearestDistance) {
+          nearestDistance = distance
+          nearestCampId = camp.campId
+        }
+      }
+      if (isInsideCamp) {
+        assignments[tankId] = camp.campId
+        break
+      }
+    }
+    if (
+      !assignments[tankId] &&
+      nearestDistance <= campBoundarySnapDistanceMeters &&
+      nearestCampId
+    ) {
+      assignments[tankId] = nearestCampId
+    }
+  }
+  return assignments
 }
 
 function normalizedOperationalStatus(value: unknown): string {
@@ -856,6 +967,7 @@ function MapView() {
   const tankServiceAreasActive = mapMode === "tankServiceAreas"
   const waterBalanceActive = isPaneOpen("waterBalance")
   const supplyPlanningActive = isPaneOpen("supplyByPlanningUnit")
+  const boreholeTankSankeyActive = isPaneOpen("boreholeTankSankey")
   const [scenarioMapView, setScenarioMapView] = useState(false)
   const waterBalanceTooltipOverlayRef = useRef<Overlay | null>(null)
   const waterBalanceTooltipElementRef = useRef<HTMLDivElement | null>(null)
@@ -985,6 +1097,12 @@ function MapView() {
     useState<Map<string, [number, number]>>(() => new Map())
   const [connectionView, setConnectionView] =
     useState<ConnectionViewState | null>(null)
+  const [boreholeTankSankeyConnections, setBoreholeTankSankeyConnections] =
+    useState<SupplyConnection[] | null>(null)
+  const [boreholeTankSankeyCampIds, setBoreholeTankSankeyCampIds] =
+    useState<Record<string, string>>({})
+  const [boreholeTankSankeyError, setBoreholeTankSankeyError] =
+    useState<string | null>(null)
   const [selectedWaterPoint, setSelectedWaterPoint] =
     useState<EmergencyWaterPoint | null>(null)
   const [isochroneResult, setIsochroneResult] =
@@ -2182,6 +2300,54 @@ function MapView() {
       void openConnectionView(selectedType, selectedId)
     })
   }, [connectionView, openConnectionView])
+
+  useEffect(() => {
+    if (
+      !boreholeTankSankeyActive ||
+      catalogStatus !== "loaded" ||
+      campsStatus !== "loaded"
+    ) return
+    const controller = new AbortController()
+
+    const loadConnections = async () => {
+      try {
+        const [relationships, tankCampIds] = await Promise.all([
+          supplyRelationshipsRef.current ??
+            getSupplyRelationships(controller.signal),
+          loadTankCampAssignments(camps, layers, controller.signal),
+        ])
+        if (controller.signal.aborted) return
+        supplyRelationshipsRef.current ??= relationships
+        setBoreholeTankSankeyConnections(
+          resolveConnections(
+            relationships.rows,
+            relationships.columns,
+            "boreholes",
+            null,
+          ),
+        )
+        setBoreholeTankSankeyCampIds(tankCampIds)
+        setBoreholeTankSankeyError(null)
+      } catch (error) {
+        if (controller.signal.aborted) return
+        console.error("Unable to load borehole–tank Sankey connections.", error)
+        setBoreholeTankSankeyError(
+          error instanceof Error
+            ? error.message
+            : "Unable to load borehole–tank supply connections.",
+        )
+      }
+    }
+
+    void loadConnections()
+    return () => controller.abort()
+  }, [
+    boreholeTankSankeyActive,
+    camps,
+    campsStatus,
+    catalogStatus,
+    layers,
+  ])
 
   useEffect(() => {
     selectedCampRef.current = selectedCamp
@@ -4393,6 +4559,20 @@ function MapView() {
           ),
           legend: (
             <MapLegend />
+          ),
+          boreholeTankSankey: (
+            <BoreholeTankSankeyPanel
+              camps={camps}
+              connections={boreholeTankSankeyConnections ?? []}
+              error={boreholeTankSankeyError}
+              initialCampId={selectedCampId}
+              tankCampIds={boreholeTankSankeyCampIds}
+              loading={
+                boreholeTankSankeyActive &&
+                boreholeTankSankeyConnections === null &&
+                !boreholeTankSankeyError
+              }
+            />
           ),
           connectionScale: connectionView ? (
             <div className="space-y-1 text-[9px] text-muted-foreground">
