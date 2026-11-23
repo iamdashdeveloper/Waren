@@ -507,27 +507,38 @@ export async function listSupplyPlanningScenarios(): Promise<
      FROM public.water_planning_scenarios AS scenario
      LEFT JOIN LATERAL (
        SELECT
-         SUM(allocation.allocated_water_m3_day) AS total_allocated_m3_day,
-         COUNT(DISTINCT allocation.supplying_tank_id) AS supplying_tank_count,
-         COUNT(DISTINCT allocation.receiving_tank_id) AS receiving_tank_count,
-         COUNT(*) FILTER (
-           WHERE result_row.original_balance_m3_day < 0
-             AND result_row.scenario_balance_m3_day >= 0
-         ) AS fully_resolved_deficits,
-         COUNT(*) FILTER (
-           WHERE result_row.original_balance_m3_day < 0
-             AND result_row.scenario_balance_m3_day < 0
-             AND result_row.allocated_in_m3_day > 0
-         ) AS partially_resolved_deficits,
-         COUNT(*) FILTER (
-           WHERE result_row.original_balance_m3_day < 0
-             AND result_row.allocated_in_m3_day = 0
-         ) AS remaining_deficits
-       FROM public.water_planning_allocations AS allocation
-       FULL JOIN public.water_planning_tank_results AS result_row
-         ON result_row.scenario_id = scenario.id
-       WHERE allocation.scenario_id = scenario.id
-          OR result_row.scenario_id = scenario.id
+         allocation_summary.total_allocated_m3_day,
+         allocation_summary.supplying_tank_count,
+         allocation_summary.receiving_tank_count,
+         result_summary.fully_resolved_deficits,
+         result_summary.partially_resolved_deficits,
+         result_summary.remaining_deficits
+       FROM (
+         SELECT
+           COALESCE(SUM(allocated_water_m3_day), 0) AS total_allocated_m3_day,
+           COUNT(DISTINCT supplying_tank_id)::integer AS supplying_tank_count,
+           COUNT(DISTINCT receiving_tank_id)::integer AS receiving_tank_count
+         FROM public.water_planning_allocations
+         WHERE scenario_id = scenario.id
+       ) AS allocation_summary
+       CROSS JOIN (
+         SELECT
+           COUNT(*) FILTER (
+             WHERE original_balance_m3_day < 0
+               AND scenario_balance_m3_day >= 0
+           )::integer AS fully_resolved_deficits,
+           COUNT(*) FILTER (
+             WHERE original_balance_m3_day < 0
+               AND scenario_balance_m3_day < 0
+               AND allocated_in_m3_day > 0
+           )::integer AS partially_resolved_deficits,
+           COUNT(*) FILTER (
+             WHERE original_balance_m3_day < 0
+               AND allocated_in_m3_day = 0
+           )::integer AS remaining_deficits
+         FROM public.water_planning_tank_results
+         WHERE scenario_id = scenario.id
+       ) AS result_summary
      ) AS results ON true
      ORDER BY scenario.updated_at DESC, scenario.created_at DESC`,
   )

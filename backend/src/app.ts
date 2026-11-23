@@ -13,6 +13,7 @@ export function buildApp() {
 
   app.register(cors, {
     origin: env.corsOrigins,
+    methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   })
   app.register(healthRoutes)
   app.register(dataRoutes)

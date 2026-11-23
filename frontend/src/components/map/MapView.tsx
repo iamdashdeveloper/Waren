@@ -889,6 +889,7 @@ function MapView() {
   const serviceAreaLayerRef = useRef<VectorLayer | null>(null)
   const supplyPlanningLayerRef = useRef<VectorLayer | null>(null)
   const supplyPlanningConnectionsLayerRef = useRef<VectorLayer | null>(null)
+  const supplyPlanningConnectionAnimationRef = useRef<number | null>(null)
   const supplyPlanningServiceAreasLayerRef = useRef<VectorLayer | null>(null)
   const isochroneLayerRef = useRef<VectorLayer | null>(null)
   const emergencyAreaLayerRef = useRef<VectorLayer | null>(null)
@@ -2319,7 +2320,7 @@ function MapView() {
       source: new VectorSource(),
       style: (feature) => {
         const selected = feature.get("selectedAllocation") === true
-        const color = selected ? "#38bdf8" : "#c084fc"
+        const color = selected ? "#4ade80" : "#22c55e"
         if (feature.getGeometry()?.getType() === "Point") {
           return new Style({
             image: new RegularShape({
@@ -2334,8 +2335,9 @@ function MapView() {
         return new Style({
           stroke: new Stroke({
             color,
-            width: selected ? 3 : 2,
-            lineDash: [8, 5],
+            width: selected ? 3.5 : 2.5,
+            lineDash: [10, 7],
+            lineDashOffset: Number(feature.get("dashOffset") ?? 0),
           }),
           text: new Text({
             text: `${Number(feature.get("allocatedWaterM3PerDay") ?? 0).toFixed(2)} m³/day`,
@@ -3605,6 +3607,50 @@ function MapView() {
     supplyPlanningSelectedAllocation,
     supplyPlanningShowConnections,
     supplyPlanningTankCoordinates,
+  ])
+
+  useEffect(() => {
+    if (
+      !supplyPlanningActive ||
+      !scenarioMapView ||
+      !supplyPlanningShowConnections
+    ) {
+      if (supplyPlanningConnectionAnimationRef.current !== null) {
+        cancelAnimationFrame(supplyPlanningConnectionAnimationRef.current)
+        supplyPlanningConnectionAnimationRef.current = null
+      }
+      return
+    }
+
+    const layer = supplyPlanningConnectionsLayerRef.current
+    const source = layer?.getSource()
+    if (!layer || !source) return
+
+    const startedAt = performance.now()
+    const animate = (now: number) => {
+      const dashOffset = -((now - startedAt) / 18) % 17
+      for (const feature of source.getFeatures()) {
+        if (feature.getGeometry()?.getType() === "LineString") {
+          feature.set("dashOffset", dashOffset, true)
+        }
+      }
+      source.changed()
+      mapInstance.current?.render()
+      supplyPlanningConnectionAnimationRef.current = requestAnimationFrame(animate)
+    }
+
+    supplyPlanningConnectionAnimationRef.current = requestAnimationFrame(animate)
+    return () => {
+      if (supplyPlanningConnectionAnimationRef.current !== null) {
+        cancelAnimationFrame(supplyPlanningConnectionAnimationRef.current)
+        supplyPlanningConnectionAnimationRef.current = null
+      }
+    }
+  }, [
+    activeSupplyPlanningResults.allocations,
+    scenarioMapView,
+    supplyPlanningActive,
+    supplyPlanningShowConnections,
   ])
 
   useEffect(() => {
