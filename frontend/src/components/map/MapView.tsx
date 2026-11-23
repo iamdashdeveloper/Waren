@@ -1837,8 +1837,7 @@ function MapView() {
           !response.area ||
           typeof response.area.geometry !== "object" ||
           !Array.isArray(response.affectedTaps) ||
-          !Array.isArray(response.alternativeTaps) ||
-          !Array.isArray(response.alternativeTanks)
+          !Array.isArray(response.alternativeTaps)
         ) {
           throw new Error("The emergency-area endpoint returned invalid data.")
         }
@@ -1868,10 +1867,6 @@ function MapView() {
           ...response.alternativeTaps.map((point) => ({
             ...point,
             planType: "alternative-tap",
-          })),
-          ...response.alternativeTanks.map((point) => ({
-            ...point,
-            planType: "alternative-tank",
           })),
         ].map((point) =>
           new Feature({
@@ -1909,7 +1904,6 @@ function MapView() {
     async (
       affectedTapIds: string[],
       alternativeTapIds: string[],
-      confirmedTankIds: string[],
     ) => {
       if (!emergencyArea) {
         setEmergencyError("Select a polygon before ranking alternatives.")
@@ -1936,7 +1930,7 @@ function MapView() {
           },
           affectedTapIds,
           alternativeTapIds,
-          confirmedTankIds,
+          [],
           controller.signal,
         )
         if (
@@ -1974,7 +1968,6 @@ function MapView() {
   const generateEmergencyPlanCoverage = useCallback(
     async (
       alternativeTapIds: string[],
-      confirmedTankIds: string[],
       contours: number[],
     ) => {
       if (!emergencyArea) {
@@ -1998,7 +1991,7 @@ function MapView() {
             serviceCode: emergencyArea.area.serviceCode,
           },
           alternativeTapIds,
-          confirmedTankIds,
+          [],
           contours,
           controller.signal,
         )
@@ -2573,25 +2566,15 @@ function MapView() {
       source: new VectorSource(),
       style: (feature) => {
         const planType = feature.get("planType")
-        const color =
-          planType === "affected"
-            ? "#fb7185"
-            : planType === "alternative-tank"
-              ? "#fbbf24"
-              : "#34d399"
+        const isAffected = planType === "affected"
         return new Style({
           image: new CircleStyle({
-            radius: planType === "affected" ? 7 : 6,
-            fill: new Fill({ color }),
+            radius: isAffected ? 7 : 6,
+            fill: new Fill({ color: isAffected ? "#fb7185" : "#34d399" }),
             stroke: new Stroke({ color: "#0f172a", width: 2 }),
           }),
           text: new Text({
-            text:
-              planType === "affected"
-                ? "!"
-                : planType === "alternative-tank"
-                  ? "T"
-                  : "+",
+            text: isAffected ? "!" : "+",
             fill: new Fill({ color: "#0f172a" }),
             font: "bold 10px sans-serif",
           }),
@@ -4520,18 +4503,16 @@ function MapView() {
               isRankingLoading={emergencyRankingLoading}
               isCoverageLoading={emergencyCoverageLoading}
               onClear={exitEmergencyAccessibility}
-              onGenerateCoverage={(alternativeTapIds, confirmedTankIds, contours) =>
+              onGenerateCoverage={(alternativeTapIds, contours) =>
                 void generateEmergencyPlanCoverage(
                   alternativeTapIds,
-                  confirmedTankIds,
                   contours,
                 )
               }
-              onRankAlternatives={(affectedTapIds, alternativeTapIds, confirmedTankIds) =>
+              onRankAlternatives={(affectedTapIds, alternativeTapIds) =>
                 void rankEmergencyPlan(
                   affectedTapIds,
                   alternativeTapIds,
-                  confirmedTankIds,
                 )
               }
               onScenarioChange={invalidateEmergencyRanking}

@@ -273,10 +273,7 @@ export function calculateSupplyPlanningResults(
     if (originalBalance === null || !Number.isFinite(originalBalance)) return []
     const allocatedInM3PerDay = allocatedIn.get(tank.tankId) ?? 0
     const allocatedOutM3PerDay = allocatedOut.get(tank.tankId) ?? 0
-    if (
-      allocatedInM3PerDay > Math.max(0, -originalBalance) + 1e-8 ||
-      allocatedOutM3PerDay > Math.max(0, originalBalance) + 1e-8
-    ) {
+    if (allocatedOutM3PerDay > Math.max(0, originalBalance) + 1e-8) {
       invalidAllocation = true
     }
     return [{
@@ -378,7 +375,6 @@ export function calculateSupplyPlanningScenario(
       allocatedPopulation > 0 &&
       remainingPopulationNeed === 0 &&
       !hasInvalidAllocation &&
-      !exceedsReceiverNeed &&
       !exceedsSupplierCapacity,
   }
 }

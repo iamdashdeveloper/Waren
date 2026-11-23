@@ -17,11 +17,9 @@ type EmergencyWaterAccessibilityPanelProps = {
   onRankAlternatives: (
     affectedTapIds: string[],
     alternativeTapIds: string[],
-    confirmedTankIds: string[],
   ) => void
   onGenerateCoverage: (
     alternativeTapIds: string[],
-    confirmedTankIds: string[],
     contours: number[],
   ) => void
   onScenarioChange: () => void
@@ -46,7 +44,7 @@ function EmergencyWaterAccessibilityPanel({
     <div className="space-y-3 text-[10px]">
       <p className="text-muted-foreground">
         Select any mapped polygon with a service code to identify the affected
-        area, review its taps, and compare nearby alternative water sources.
+        area, review its taps, and compare nearby operational taps.
       </p>
       <EmergencyAreaPlanningPanel
         area={emergencyArea}

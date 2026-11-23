@@ -423,12 +423,9 @@ function buildScenarioSnapshot(
     if (originalBalance === null) return []
     const allocatedInM3PerDay = inByTank.get(tank.tankId) ?? 0
     const allocatedOutM3PerDay = outByTank.get(tank.tankId) ?? 0
-    if (
-      allocatedInM3PerDay > Math.max(0, -originalBalance) + 1e-8 ||
-      allocatedOutM3PerDay > Math.max(0, originalBalance) + 1e-8
-    ) {
+    if (allocatedOutM3PerDay > Math.max(0, originalBalance) + 1e-8) {
       throw new SupplyPlanningError(
-        "An allocation exceeds a receiving deficit or supplying surplus.",
+        "An allocation exceeds a supplying surplus.",
         422,
       )
     }

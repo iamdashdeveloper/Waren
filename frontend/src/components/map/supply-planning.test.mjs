@@ -56,7 +56,7 @@ test("does not mark a partial population allocation feasible", () => {
   assert.equal(scenario.feasible, false)
 })
 
-test("reports allocations that exceed the receiver need or supplier capacity", () => {
+test("allows allocations beyond receiver need but rejects allocations beyond supplier capacity", () => {
   const tooMuchForReceiver = calculateSupplyPlanningScenario(
     { tankId: "Receiver", balanceM3PerDay: -1, coordinates: [0, 0] },
     [{ tankId: "Supplier", balanceM3PerDay: 10, coordinates: [0.01, 0] }],
@@ -70,7 +70,7 @@ test("reports allocations that exceed the receiver need or supplier capacity", (
     2,
   )
   assert.equal(tooMuchForReceiver.exceedsReceiverNeed, true)
-  assert.equal(tooMuchForReceiver.feasible, false)
+  assert.equal(tooMuchForReceiver.feasible, true)
   assert.equal(tooMuchForSupplier.exceedsSupplierCapacity, true)
   assert.equal(tooMuchForSupplier.feasible, false)
 })
@@ -178,12 +178,12 @@ test("scenario results aggregate allocations and classify deficit outcomes", () 
   assert.equal(results.tankResults.find((tank) => tank.tankId === "Supplier")?.scenarioBalanceM3PerDay, 0)
 })
 
-test("scenario result validation rejects oversubscribed suppliers and overfunded receivers", () => {
+test("scenario result validation allows overfunded receivers but rejects oversubscribed suppliers", () => {
   const tanks = [
     { tankId: "Receiver", balanceM3PerDay: -1, coordinates: [0, 0] },
-    { tankId: "Supplier", balanceM3PerDay: 1, coordinates: [0.01, 0] },
+    { tankId: "Supplier", balanceM3PerDay: 10, coordinates: [0.01, 0] },
   ]
-  const results = calculateSupplyPlanningResults(
+  const overfundedResults = calculateSupplyPlanningResults(
     tanks,
     [
       {
@@ -196,5 +196,27 @@ test("scenario result validation rejects oversubscribed suppliers and overfunded
     ],
     2,
   )
-  assert.equal(results.invalidAllocation, true)
+  assert.equal(overfundedResults.invalidAllocation, false)
+  assert.ok(Math.abs(
+    overfundedResults.tankResults.find((tank) => tank.tankId === "Receiver")
+      ?.scenarioBalanceM3PerDay - 0.2,
+  ) < 1e-10)
+
+  const oversubscribedResults = calculateSupplyPlanningResults(
+    [
+      tanks[0],
+      { tankId: "Supplier", balanceM3PerDay: 1, coordinates: [0.01, 0] },
+    ],
+    [
+      {
+        supplyingTankId: "Supplier",
+        receivingTankId: "Receiver",
+        allocatedPopulation: 60,
+        allocatedWaterM3PerDay: 1.2,
+        distanceM: 1112,
+      },
+    ],
+    2,
+  )
+  assert.equal(oversubscribedResults.invalidAllocation, true)
 })

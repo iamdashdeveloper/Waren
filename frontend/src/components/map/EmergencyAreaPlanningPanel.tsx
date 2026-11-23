@@ -25,11 +25,9 @@ type EmergencyAreaPlanningPanelProps = {
   onRank: (
     affectedTapIds: string[],
     alternativeTapIds: string[],
-    confirmedTankIds: string[],
   ) => void
   onGenerateCoverage: (
     alternativeTapIds: string[],
-    confirmedTankIds: string[],
     contours: number[],
   ) => void
   onScenarioChange: () => void
@@ -61,14 +59,12 @@ function EmergencyAreaPlanningPanel({
         .slice(0, maximumAffectedTaps)
         .map((tap) => tap.id) ?? [],
     alternativeTapIds: area?.alternativeTaps.map((tap) => tap.id) ?? [],
-    confirmedTankIds: [] as string[],
     coverageSourceKeys: [] as string[],
   }
   const [selection, setSelection] = useState(defaultSelection)
   const activeSelection =
     selection.areaKey === areaKey ? selection : defaultSelection
-  const { affectedTapIds, alternativeTapIds, confirmedTankIds, coverageSourceKeys } =
-    activeSelection
+  const { affectedTapIds, alternativeTapIds, coverageSourceKeys } = activeSelection
   const [selectedThresholds, setSelectedThresholds] = useState(thresholds)
 
   const updateSelection = (
@@ -82,10 +78,7 @@ function EmergencyAreaPlanningPanel({
   }
 
   const candidateLookup = useMemo(() => {
-    const candidates = [
-      ...(area?.alternativeTaps ?? []),
-      ...(area?.alternativeTanks ?? []),
-    ]
+    const candidates = area?.alternativeTaps ?? []
     return new Map(
       candidates.map((candidate) => [
         `${candidate.source}:${candidate.id}`,
@@ -99,7 +92,6 @@ function EmergencyAreaPlanningPanel({
     key:
       | "affectedTapIds"
       | "alternativeTapIds"
-      | "confirmedTankIds"
       | "coverageSourceKeys",
     id: string,
   ) => {
@@ -117,17 +109,11 @@ function EmergencyAreaPlanningPanel({
     const candidate = candidateLookup.get(key)
     return candidate?.source === "tap" ? [candidate.id] : []
   })
-  const selectedCoverageTankIds = coverageSourceKeys.flatMap((key) => {
-    const candidate = candidateLookup.get(key)
-    return candidate?.source === "tank" ? [candidate.id] : []
-  })
-
   return (
     <div className="space-y-3 text-[10px]">
       <p className="text-muted-foreground">
         Select any mapped polygon by its service code, review the taps it
-        contains, and compare nearby alternative taps. Tanks are included only
-        after you manually confirm availability.
+        contains, and compare nearby operational taps.
       </p>
 
       <div
@@ -244,8 +230,7 @@ function EmergencyAreaPlanningPanel({
                       className="accent-emerald-400"
                       disabled={
                         !alternativeTapIds.includes(tap.id) &&
-                        alternativeTapIds.length + confirmedTankIds.length >=
-                          maximumAlternatives
+                        alternativeTapIds.length >= maximumAlternatives
                       }
                       onChange={() =>
                         toggleId(alternativeTapIds, "alternativeTapIds", tap.id)
@@ -260,53 +245,15 @@ function EmergencyAreaPlanningPanel({
             )}
           </fieldset>
 
-          <fieldset className="space-y-1.5 border-t border-border pt-2.5">
-            <legend className="mb-1 font-medium text-foreground">
-              Tanks (availability unverified)
-            </legend>
-            <p className="text-amber-300">
-              Select a tank only after confirming it can supply water. Its
-              recorded condition is not an operational-status field.
-            </p>
-            <div className="max-h-28 space-y-1 overflow-y-auto">
-              {area.alternativeTanks.map((tank) => (
-                <label className="flex items-center gap-2" key={tank.id}>
-                  <input
-                    checked={confirmedTankIds.includes(tank.id)}
-                    className="accent-amber-400"
-                    disabled={
-                      !confirmedTankIds.includes(tank.id) &&
-                      alternativeTapIds.length + confirmedTankIds.length >=
-                        maximumAlternatives
-                    }
-                    onChange={() =>
-                      toggleId(confirmedTankIds, "confirmedTankIds", tank.id)
-                    }
-                    type="checkbox"
-                  />
-                  <span className="text-foreground">Tank {tank.id}</span>
-                  <span className="text-muted-foreground">
-                    {tank.status ?? "Condition not recorded"} · manually confirmed
-                  </span>
-                </label>
-              ))}
-              {area.alternativeTanks.length === 0 && (
-                <p className="text-muted-foreground">No nearby tanks found.</p>
-              )}
-            </div>
-          </fieldset>
-
           <Button
             className="w-full"
             data-tour="emergency-rank"
             disabled={
               isRankingLoading ||
               affectedTapIds.length === 0 ||
-              (alternativeTapIds.length === 0 && confirmedTankIds.length === 0)
+              alternativeTapIds.length === 0
             }
-            onClick={() =>
-              onRank(affectedTapIds, alternativeTapIds, confirmedTankIds)
-            }
+            onClick={() => onRank(affectedTapIds, alternativeTapIds)}
             size="sm"
           >
             {isRankingLoading ? "Comparing routes…" : "Rank alternatives"}
@@ -327,9 +274,6 @@ function EmergencyAreaPlanningPanel({
               </p>
               {rankings.map((ranking, index) => {
                 const key = `${ranking.source}:${ranking.id}`
-                const condition = ranking.source === "tank"
-                  ? `Condition: ${ranking.condition ?? "not recorded"}`
-                  : "Operational status recorded"
                 return (
                   <label
                     className="flex items-start gap-2 border-b border-border/60 py-1.5"
@@ -354,7 +298,7 @@ function EmergencyAreaPlanningPanel({
                     />
                     <span className="min-w-0 flex-1">
                       <span className="block text-foreground">
-                        {index + 1}. {ranking.source} {ranking.id}
+                        {index + 1}. Tap {ranking.id}
                       </span>
                       <span className="block text-muted-foreground">
                         {formatMinutes(ranking.longestReachableRouteSeconds)}
@@ -363,7 +307,7 @@ function EmergencyAreaPlanningPanel({
                         {affectedTapIds.length} affected taps reachable
                       </span>
                       <span className="block text-muted-foreground">
-                        {condition}
+                        Operational status recorded
                       </span>
                       <details className="mt-1 text-muted-foreground">
                         <summary className="cursor-pointer">
@@ -435,7 +379,6 @@ function EmergencyAreaPlanningPanel({
             onClick={() =>
               onGenerateCoverage(
                 selectedCoverageTapIds,
-                selectedCoverageTankIds,
                 selectedThresholds.map((minutes) => minutes * 60),
               )
             }
